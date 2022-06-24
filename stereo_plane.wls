@@ -3,16 +3,17 @@
 nGenerations = 10;
 nGenerations = 7;
 
-framesPerStage = 100;
+framesPerStage = 5;
 
-radius = 2.5;
-
-stillStages = 2;
+stillStages = 1;
 
 exportToPov = True;
 highlightCenter = False;
 topView = True;
 (* topView = False; *)
+
+projectToBall = True;
+(* projectToBall = False; *)
 
 trackVertices = False;
 
@@ -29,6 +30,8 @@ If[Length[argv] >= 2,
 	p = ToExpression[argv[[1]]]; q = ToExpression[argv[[2]]],
 	p = 6; q = 3; (* default *)
 ];
+
+radius = 2.5;
 
 maxStellationLevel = If[Length[argv] >= 3, ToExpression[argv[[3]]], 1];
 maxRatio = Tan[maxStellationLevel Pi/p]/Tan[Pi/p];
@@ -119,7 +122,7 @@ boostMatrix[angle_, axis_] := RotationMatrix[Arg[axis[[2]] + I axis[[3]]], {1, 0
 
 boosted[vertices_, center_, axis_, angle_] := Map[# + center &, Map[# - center &, vertices].boostMatrix[angle, axis]];
 
-shapeWithParams = shape <> If[topView, "_top", ""] <> "_" <> IntegerString[nGenerations];
+shapeWithParams = shape <> If[topView, "_top", ""] <> "_" <> IntegerString[nGenerations] <> If[projectToBall, "", "_no_projection"];
 
 getGenerator[p_, q_] := Module[
 	{inner01, inner02, inner12, signature, p0, p1, p2, otherp2, ch2psi},
@@ -376,15 +379,23 @@ exportAnimation[] := Module[
 		];
 	];
 
-	For[stage = 1, stage <= 3 * (1 + stillStages), stage++,
+	stageCount = If[{p,q}=={4,4}, 2, 3];
+	For[stage = 1, stage <= stageCount * (1 + stillStages), stage++,
 		For[srId = 1, srId <= framesPerStage, srId ++,
 			sr = srId/framesPerStage;
 			Print["sr = " <> ToString[N[sr]]];
-			movedFaces = Map[(# + {0, 0, -Sqrt[3] Mod[sr, 1] })&, faces, {2}];
+			zOffset = If[{p, q}=={4,4}, 2, Sqrt[3]];
+			movedFaces = Map[(# + {0, 0, -zOffset Mod[sr, 1] })&, faces, {2}];
 
 			truncateStage = Ceiling[stage/(1 + stillStages)];
 			truncateSr = If[truncateStage * (1 + stillStages) == stage, sr, 0];
-			component1 = If[{p, q}=={3,6} || {p, q}=={6,3}, Flatten[ Map[truncateFace[#, truncateStage, truncateSr]&, movedFaces], 1], movedFaces];
+			component1 = If[{p, q}=={6,3}, 
+				Flatten[ Map[truncateFace63[#, truncateStage, truncateSr]&, movedFaces], 1], 
+				If[{p,q}=={4,4},
+					Flatten[ Map[truncateFace44[#, truncateStage, truncateSr]&, movedFaces], 1], 
+					,movedFaces
+				]
+			];
 
 			components = {component1};
 
@@ -400,7 +411,7 @@ exportAnimation[] := Module[
 				];
 			];
 
-			componentsStereo = Map[radius stereo[# / radius]&, components, {3}];
+			componentsStereo = If[projectToBall, Map[radius stereo[# / radius]&, components, {3}], components];
 
 			frameIndex = (stage - 1) * framesPerStage + srId;
 			exportFrame[componentsStereo, 0, frameIndex, outputFolderName];
@@ -436,7 +447,7 @@ Print[xCenters];
 
 (* component1 = Map[(# + {0, 0, 0.05})&, component1, {2}]; *)
 
-truncateFace[f_, stage_, sr_] := 
+truncateFace63[f_, stage_, sr_] := 
 	If[stage == 1,
 		{
 			{
@@ -486,8 +497,30 @@ truncateFace[f_, stage_, sr_] :=
 		}]
 	];
 
+truncateFace44[f_, stage_, sr_] := 
+	If[stage == 1,
+		{
+			{
+				f[[1]] (1+sr)/2 + (1-sr)/2 f[[2]],
+				f[[2]] (1+sr)/2 + (1-sr)/2 f[[3]],
+				f[[3]] (1+sr)/2 + (1-sr)/2 f[[4]],
+				f[[4]] (1+sr)/2 + (1-sr)/2 f[[1]]
+			}
+		},
+		{
+			{
+				f[[2]] (2-sr)/2 + (sr)/2 f[[1]],
+				f[[3]] (2-sr)/2 + (sr)/2 f[[2]],
+				f[[4]] (2-sr)/2 + (sr)/2 f[[3]],
+				f[[1]] (2-sr)/2 + (sr)/2 f[[4]]
+			}
+		}
+	];
 
 exportAnimation[];
+
+
+
 
 
 (* 
