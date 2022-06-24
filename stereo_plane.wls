@@ -3,10 +3,11 @@
 nGenerations = 10;
 nGenerations = 7;
 
-framesPerStage = 5;
+framesPerStage = 100;
+
 radius = 2.5;
 
-stillStages = 1;
+stillStages = 2;
 
 exportToPov = True;
 highlightCenter = False;
@@ -41,7 +42,7 @@ colors = {Blue, Red, Green};
 splitEdgeParts = 8;
 
 imageFolder = "output";
-rotationLighting = Transpose[RotationMatrix[{{0.7, -0.7, 1}, {1, 0, 0}}]];
+rotationLighting = Transpose[RotationMatrix[{{0.5, -1.0, 1.5}, {1, 0, 0}}]];
 
 Needs["POVRayRender`"];
 ConfigurePOVRayRender["POVRayPath" -> "C:\\Program Files\\POV-Ray\\v3.7\\bin\\pvengine64.exe"];
