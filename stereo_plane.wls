@@ -3,9 +3,9 @@
 nGenerations = 10;
 nGenerations = 7;
 
-framesPerStage = 5;
+framesPerStage = 100;
 
-stillStages = 1;
+stillStages = 2;
 
 exportToPov = True;
 highlightCenter = False;
