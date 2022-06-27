@@ -1,10 +1,10 @@
 #!/usr/bin/env wolframscript
 
-nGenerations = 10;
-nGenerations = 7;
+(* nGenerations = 10; *)
+(* nGenerations = 7; *)
 nGenerations = 12;
 
-framesPerStage = 2;
+framesPerStage = 100;
 
 stillStages = 1;
 
