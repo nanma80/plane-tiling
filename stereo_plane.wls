@@ -1,10 +1,11 @@
 #!/usr/bin/env wolframscript
 
 (* nGenerations = 10; *)
-(* nGenerations = 7; *)
-nGenerations = 12;
+nGenerations = 7;
+(* nGenerations = 12; *)
+(* nGenerations = 0; *)
 
-framesPerStage = 100;
+framesPerStage = 3;
 
 stillStages = 1;
 
@@ -366,7 +367,7 @@ exportAnimation[] := Module[
 	gifFolder = FileNameJoin[{imageFolder, shape}];
 	If[!DirectoryQ[gifFolder], CreateDirectory[gifFolder]];
 
-	faces = generateFaces[p, q];
+	faces = If[{p, q}=={3,6}, generateFaces[6, 3], generateFaces[p, q]];
 
 	(* ensure all faces are rotating to the same direction *)
 	centeredFaces = Table[Map[# - Mean[faces[[k]]]&, faces[[k]]], {k, 1, Length[faces]}];
@@ -379,9 +380,18 @@ exportAnimation[] := Module[
 		If[argDiff[[k]] < 1,
 			faces[[k]] = Reverse[faces[[k]]];
 		];
+		If[{p, q} == {3,6},
+			mod = Mod[faces[[k]][[1]][[2]] + 1, 3/2];
+			If[mod > epsilon && mod < 3/2 - epsilon, faces[[k]] = RotateLeft[faces[[k]]]];
+		];
 	];
 
-	stageCount = If[{p,q}=={4,4}, 2, 3];
+	(* Map[Print[Round[#, 0.001]]&, faces]; *)
+
+
+
+	stageCount = If[{p,q}=={6,3}, 3, 2];
+
 	For[stage = 1, stage <= stageCount * (1 + stillStages), stage++,
 		For[srId = 1, srId <= framesPerStage, srId ++,
 			sr = srId/framesPerStage;
@@ -391,12 +401,18 @@ exportAnimation[] := Module[
 
 			truncateStage = Ceiling[stage/(1 + stillStages)];
 			truncateSr = If[truncateStage * (1 + stillStages) == stage, sr, 0];
-			component1 = If[{p, q}=={6,3}, 
-				Flatten[ Map[truncateFace63[#, truncateStage, truncateSr]&, movedFaces], 1], 
-				If[{p,q}=={4,4},
-					Flatten[ Map[truncateFace44[#, truncateStage, truncateSr]&, movedFaces], 1], 
-					,movedFaces
-				]
+			component1 = movedFaces;
+
+			If[{p, q}=={6,3}, 
+				component1 = Flatten[ Map[truncateFace63[#, truncateStage, truncateSr]&, movedFaces], 1];
+			];
+
+			If[{p,q}=={4,4},
+				component1 = Flatten[ Map[truncateFace44[#, truncateStage, truncateSr]&, movedFaces], 1]; 
+			];
+
+			If[{p,q}=={3,6},
+				component1 = Flatten[ Map[truncateFace36[#, truncateStage, truncateSr]&, movedFaces], 1];
 			];
 
 			components = {component1};
@@ -404,14 +420,18 @@ exportAnimation[] := Module[
 			If[{p, q}=={3,6} || {p, q}=={6,3},
 				component2 = Map[(# + {0, 1/2, Sqrt[3]/2})&, component1, {2}];
 				component3 = Map[(# + {0, -1/2, Sqrt[3]/2})&, component1, {2}];
-				components = {component1, component2, component3},
+
+				If[{p, q}=={3,6}, component3 = Map[rotateFace, component3]];
+				components = If[{p, q}=={6,3}, {component1, component2, component3}, {component1, component3}];
 
 				If[{p,q}=={4,4},
 					component2 = Map[(# + {0, 1, 0})&, component1, {2}];
-
 					components = {component1, component2}
 				];
 			];
+
+			Print[components//Length];
+			Print[components[[1]]//Length];
 
 			componentsStereo = If[projectToBall, Map[radius stereo[# / radius]&, components, {3}], components];
 
@@ -518,6 +538,33 @@ truncateFace44[f_, stage_, sr_] :=
 			}
 		}
 	];
+
+rotateFace[f_] := Map[Mean[f] + (# - Mean[f]).Rotation[Pi/3]&, f];
+
+truncateFace36[f_, stage_, sr_] := 
+	If[stage == 1,
+		{
+			{
+				Mean[f] + (f[[1]] - Mean[f]).Rotation[sr Pi/3],
+				f[[1]],
+				Mean[f] + (f[[3]] - Mean[f]).Rotation[sr Pi/3],
+				f[[3]],
+				Mean[f] + (f[[5]] - Mean[f]).Rotation[sr Pi/3],
+				f[[5]]
+			}
+		},
+		{
+			{
+				Mean[f] + (f[[1]] - Mean[f]).Rotation[(sr + 1)Pi/3],
+				f[[1]],
+				Mean[f] + (f[[3]] - Mean[f]).Rotation[(sr + 1) Pi/3],
+				f[[3]],
+				Mean[f] + (f[[5]] - Mean[f]).Rotation[(sr + 1) Pi/3],
+				f[[5]]
+			}
+		}
+	];
+
 
 exportAnimation[];
 
