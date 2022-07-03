@@ -5,8 +5,8 @@ Objective: plot the non convex tilings on
 https://en.wikipedia.org/wiki/Uniform_tiling#Expanded_lists_of_uniform_tilings
  *)
 (* nGenerations = 10; *)
-nGenerations = 7;
-(* nGenerations = 13; *)
+(* nGenerations = 7; *)
+nGenerations = 13;
 (* nGenerations = 0; *)
 
 framesPerStage = 1;
@@ -15,11 +15,13 @@ stillStages = 1;
 
 exportToPov = True;
 highlightCenter = False;
-topView = True;
-(* topView = False; *)
 
 projectToBall = True;
 (* projectToBall = False; *)
+
+topView = True;
+topView = False;
+If[projectToBall == False, topView = True];
 
 trackVertices = False;
 
@@ -37,7 +39,7 @@ If[Length[argv] >= 2,
 	p = 6; q = 3; (* default *)
 ];
 
-radius = 4;
+radius = 2.5;
 
 maxStellationLevel = If[Length[argv] >= 3, ToExpression[argv[[3]]], 1];
 maxRatio = Tan[maxStellationLevel Pi/p]/Tan[Pi/p];
@@ -147,11 +149,11 @@ getGenerator[p_, q_] := Module[
 	{vertex1, mirrors, 0}
 ];
 
-generateFaces[p_, q_] := Module[
-	{},
+generateFaces[p_, q_, option_] := Module[
+	{sol, x, y, generator, vertex1, mirrors, signature, image1, image2, image3},
 
 	generator = getGenerator[p, q];
-	vertex1 = generator[[1]];
+	(* vertex1 = generator[[1]]; *)
 	mirrors = generator[[2]];
 	signature = generator[[3]];
 
@@ -159,18 +161,30 @@ generateFaces[p_, q_] := Module[
 	image1 = HReflect[vertex1, mirrors[[1]], signature];
 	image2 = HReflect[vertex1, mirrors[[2]], signature];
 	image3 = HReflect[vertex1, mirrors[[3]], signature];
-	
+
+	sol = {};
 	(* 3,4,6,4 https://en.wikipedia.org/wiki/Rhombitrihexagonal_tiling *)
-	(* sol = Solve[Norm[image1-vertex1]==Norm[image3 - vertex1] && Norm[vertex1 - image2] == 0 && x < 1 && x >= 0 && y >= 0, {x, y}]; *)
+	If[option == 1,
+		sol = Solve[Norm[image1-vertex1]==Norm[image3 - vertex1] && Norm[vertex1 - image2] == 0 && x < 1 && x >= 0 && y >= 0, {x, y}];
+	];
+
+	(* 12, 3, 4. Related to 3,4,6,4 but not sure what exactly this is *)
+	If[option == 2,
+		sol = Solve[Norm[image1-vertex1]==Norm[image3 - vertex1] && Norm[image1-vertex1]==Norm[image2 - vertex1] && x > 1 && x >= 0 && y >= 0, {x, y}];
+	];
 
 	(* 4,6,12 https://en.wikipedia.org/wiki/Truncated_trihexagonal_tiling *)
 	(* sol = Solve[Norm[image1-vertex1]==Norm[image3 - vertex1] && Norm[image1-vertex1]==Norm[image2 - vertex1] && x < 1 && x >= 0 && y >= 0, {x, y}]; *)
 
-	(* Gruenbaum 18, 19, 17? https://en.wikipedia.org/wiki/Uniform_tiling#Expanded_lists_of_uniform_tilings *)
+	(* Gruenbaum 18, 19, 17? https://en.wikipedia.org/wiki/Uniform_tiling#Expanded_lists_of_uniform_tilings 
+	producing 3,4,6
+	*)
 	(* sol = Solve[Norm[image1-vertex1]==Norm[image3 - vertex1] && Norm[vertex1 - image2] == 0 && x > 1 && x >= 0 && y >= 0, {x, y}]; *)
 
-	(* 12, 3, 4. Related to 3,4,6,4 but not sure what exactly this is *)
-	sol = Solve[Norm[image1-vertex1]==Norm[image3 - vertex1] && Norm[image1-vertex1]==Norm[image2 - vertex1] && x > 1 && x >= 0 && y >= 0, {x, y}];
+
+	(* 12, 12, 3 https://en.wikipedia.org/wiki/Truncated_hexagonal_tiling *)
+	(* sol = Solve[Norm[image3 - vertex1]==0 && Norm[image1-vertex1]==Norm[image2 - vertex1] && x < 1 && x >= 0 && y >= 0, {x, y}]; *)
+
 
 	Print[sol];
 	vertex1 = vertex1/.sol[[1]];
@@ -232,8 +246,7 @@ generateFaces[p_, q_] := Module[
 		];
 	];
 
-	scaledFaces = Map[(# / vertex1[[2]] + {1- vertex1[[1]]/vertex1[[2]], 0, 0} )&, faces, {2}];
-	scaledFaces
+	faces
 ]
 
 elements3D[faces_, spinAngle_, color_] := Module[
@@ -327,7 +340,7 @@ exportFrame[components_, spinAngle_, frameIndex_, outputFolderName_] := Module[
 	graph = Graphics3D[
 		elements,
 		ViewPoint -> viewPointBeforeRotation.Transpose[rotationLighting] * 100,
-		ViewVertical -> If[topView, {0, 1, 0}, {1, 0, 0}].Transpose[rotationLighting],
+		ViewVertical -> If[topView, {0, 0, 1}, {1, 0, 0}].Transpose[rotationLighting],
 		PlotRange -> {{viewCenter[[1]]-range, viewCenter[[1]]+range}, {viewCenter[[2]]-range, viewCenter[[2]]+range}, {viewCenter[[3]]-range, viewCenter[[3]]+range}},
 		Lighting -> lighting
 	];
@@ -574,11 +587,26 @@ truncateFace36[f_, stage_, sr_] :=
 
 (* exportAnimation[]; *)
 
-faces = generateFaces[6, 3];
-(* components = {faces}; *)
-groupedFaces = GroupBy[faces, Length];
-sortedKey = Sort[Keys[groupedFaces]];
-components = Map[groupedFaces, sortedKey];
+(* faces = generateFaces[6, 3]; *)
+(* groupedFaces = GroupBy[faces, Length]; *)
+(* sortedKey = Sort[Keys[groupedFaces]]; *)
+(* Print[sortedKey]; *)
+(* Grunbaum 16 *)
+(* sortedKey = Select[sortedKey, #!=3 &]; *)
+(* Print[sortedKey]; *)
+(* components = Map[groupedFaces, sortedKey]; *)
+
+(* Grunbaum 15 *)
+faces1 = generateFaces[6, 3, 1];
+groupedFaces = GroupBy[faces1, Length];
+components1 = Map[groupedFaces, {3,6}];
+
+faces2 = generateFaces[6, 3, 2];
+groupedFaces = GroupBy[faces2, Length];
+components2 = Map[groupedFaces, {12}];
+
+components = Join[components1, components2];
+(* components = components2; *)
 
 componentsStereo = If[projectToBall, Map[radius stereo[# / radius]&, components, {3}], components];
 exportFrame[componentsStereo, 0, 1, "test"];
