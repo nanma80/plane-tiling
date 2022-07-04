@@ -4,9 +4,14 @@
 Objective: plot the non convex tilings on
 https://en.wikipedia.org/wiki/Uniform_tiling#Expanded_lists_of_uniform_tilings
  *)
+
+(* uniformShape = "Grunbaum15"; *)
+(* uniformShape = "Grunbaum16"; *)
+uniformShape = "3464";
+
 (* nGenerations = 10; *)
-(* nGenerations = 7; *)
-nGenerations = 13;
+nGenerations = 5;
+(* nGenerations = 13; *)
 (* nGenerations = 0; *)
 
 framesPerStage = 1;
@@ -20,7 +25,7 @@ projectToBall = True;
 (* projectToBall = False; *)
 
 topView = True;
-topView = False;
+(* topView = False; *)
 If[projectToBall == False, topView = True];
 
 trackVertices = False;
@@ -47,8 +52,23 @@ maxRatio = Tan[maxStellationLevel Pi/p]/Tan[Pi/p];
 dihedralSpherical = 0;
 dihedralHyperbolic = 0;
 
-shape = "uniform_" <> ToString[p, InputForm] <> "_" <> ToString[q, InputForm];
-colors = {Yellow, Blue, Red};
+shape = "uniform_" <> ToString[p, InputForm] <> "_" <> ToString[q, InputForm] <> "_" <> uniformShape;
+colors = {Yellow, Blue, Red, Green, Purple, Cyan, Orange};
+
+If[uniformShape == "3464",
+	(* 3,4,6 *)
+	colors = {Yellow,  Green,  Blue};
+];
+
+If[uniformShape == "Grunbaum15",
+	(* 3, 6, 12*3 *)
+	colors = {Yellow,  Blue,  Red, Purple, Orange};
+];
+
+If[uniformShape == "Grunbaum16",
+	(* 4, 12*3 *)
+	colors = {Green, Red, Purple, Orange};
+];
 
 splitEdgeParts = 8;
 
@@ -59,6 +79,7 @@ rotationLighting = Transpose[RotationMatrix[{{0.5, -1.0, 1.5}, viewPointBeforeRo
 Needs["POVRayRender`"];
 ConfigurePOVRayRender["POVRayPath" -> "C:\\Program Files\\POV-Ray\\v3.7\\bin\\pvengine64.exe"];
 
+centerMod3[face_] := Mod[Round[Mean[face][[2]] - Mean[face][[3]]/Sqrt[3]], 3] + 1;
 HInner[v_, u_, sig_] := If[sig > 0, 2 * v[[1]] * u[[1]] - Dot[v, u], Dot[v, u]];
 HNormSquare[v_, sig_] := HInner[v, v, sig];
 HNorm[v_, sig_] := Sqrt[HNormSquare[v, sig]];
@@ -479,134 +500,38 @@ exportAnimation[] := Module[
   Print["Saved the video to " <> gifFolder <> "\\" <> gifFileName <> ".mp4"];
 ];
 
-(* centers = Map[Mean, faces]; *)
-
-(* xCenters = Select[centers, Abs[#[[2]]] < epsilon || Abs[#[[3]]] < epsilon & ];
-Print[xCenters];
- *)
-(* Exit[]; *)
-
-(* component1 = Map[(# + {0, 0, 0.05})&, component1, {2}]; *)
-
-truncateFace63[f_, stage_, sr_] := 
-	If[stage == 1,
-		{
-			{
-				f[[1]] (sr/3 + 2/3) + (1/3 - sr/3) f[[3]],
-				f[[3]] (sr/3 + 2/3) + (1/3 - sr/3) f[[1]],
-				f[[3]] (sr/3 + 2/3) + (1/3 - sr/3) f[[5]],
-				f[[5]] (sr/3 + 2/3) + (1/3 - sr/3) f[[3]],
-				f[[5]] (sr/3 + 2/3) + (1/3 - sr/3) f[[1]],
-				f[[1]] (sr/3 + 2/3) + (1/3 - sr/3) f[[5]]
-			},
-			{
-				f[[2]] (sr/3 + 2/3) + (1/3 - sr/3) f[[4]],
-				f[[4]] (sr/3 + 2/3) + (1/3 - sr/3) f[[2]],
-				f[[4]] (sr/3 + 2/3) + (1/3 - sr/3) f[[6]],
-				f[[6]] (sr/3 + 2/3) + (1/3 - sr/3) f[[4]],
-				f[[6]] (sr/3 + 2/3) + (1/3 - sr/3) f[[2]],
-				f[[2]] (sr/3 + 2/3) + (1/3 - sr/3) f[[6]]
-			}	
-		},
-		If[stage == 2, {
-			{
-				Mean[f] + (f[[1]] - Mean[f]).Rotation[sr Pi/3],
-				f[[1]],
-				Mean[f] + (f[[3]] - Mean[f]).Rotation[sr Pi/3],
-				f[[3]],
-				Mean[f] + (f[[5]] - Mean[f]).Rotation[sr Pi/3],
-				f[[5]]
-			},
-			{
-				Mean[f] + (f[[2]] - Mean[f]).Rotation[sr Pi/3],
-				f[[2]],
-				Mean[f] + (f[[4]] - Mean[f]).Rotation[sr Pi/3],
-				f[[4]],
-				Mean[f] + (f[[6]] - Mean[f]).Rotation[sr Pi/3],
-				f[[6]]
-			}
-		},
-		{
-			{
-				f[[1]] (1-sr/3) + (sr/3) f[[3]],
-				f[[2]] (1-sr/3) + (sr/3) f[[4]],
-				f[[3]] (1-sr/3) + (sr/3) f[[5]],
-				f[[4]] (1-sr/3) + (sr/3) f[[6]],
-				f[[5]] (1-sr/3) + (sr/3) f[[1]],
-				f[[6]] (1-sr/3) + (sr/3) f[[2]]
-			}
-		}]
-	];
-
-truncateFace44[f_, stage_, sr_] := 
-	If[stage == 1,
-		{
-			{
-				f[[1]] (1+sr)/2 + (1-sr)/2 f[[2]],
-				f[[2]] (1+sr)/2 + (1-sr)/2 f[[3]],
-				f[[3]] (1+sr)/2 + (1-sr)/2 f[[4]],
-				f[[4]] (1+sr)/2 + (1-sr)/2 f[[1]]
-			}
-		},
-		{
-			{
-				f[[2]] (2-sr)/2 + (sr)/2 f[[1]],
-				f[[3]] (2-sr)/2 + (sr)/2 f[[2]],
-				f[[4]] (2-sr)/2 + (sr)/2 f[[3]],
-				f[[1]] (2-sr)/2 + (sr)/2 f[[4]]
-			}
-		}
-	];
-
-rotateFace[f_] := Map[Mean[f] + (# - Mean[f]).Rotation[Pi/3]&, f];
-
-truncateFace36[f_, stage_, sr_] := 
-	If[stage == 1,
-		{
-			{
-				Mean[f] + (f[[1]] - Mean[f]).Rotation[sr Pi/3],
-				f[[1]],
-				Mean[f] + (f[[3]] - Mean[f]).Rotation[sr Pi/3],
-				f[[3]],
-				Mean[f] + (f[[5]] - Mean[f]).Rotation[sr Pi/3],
-				f[[5]]
-			}
-		},
-		{
-			{
-				Mean[f] + (f[[1]] - Mean[f]).Rotation[(sr + 1)Pi/3],
-				f[[1]],
-				Mean[f] + (f[[3]] - Mean[f]).Rotation[(sr + 1) Pi/3],
-				f[[3]],
-				Mean[f] + (f[[5]] - Mean[f]).Rotation[(sr + 1) Pi/3],
-				f[[5]]
-			}
-		}
-	];
-
-
 (* exportAnimation[]; *)
 
-(* faces = generateFaces[6, 3]; *)
-(* groupedFaces = GroupBy[faces, Length]; *)
-(* sortedKey = Sort[Keys[groupedFaces]]; *)
-(* Print[sortedKey]; *)
-(* Grunbaum 16 *)
-(* sortedKey = Select[sortedKey, #!=3 &]; *)
-(* Print[sortedKey]; *)
-(* components = Map[groupedFaces, sortedKey]; *)
+components = {};
 
-(* Grunbaum 15 *)
-faces1 = generateFaces[6, 3, 1];
-groupedFaces = GroupBy[faces1, Length];
-components1 = Map[groupedFaces, {3,6}];
+If[uniformShape == "3464",
+	faces = generateFaces[6, 3, 1];
+	groupedFaces = GroupBy[faces, Length];
+	components = Join[{groupedFaces[3]}, {groupedFaces[4]}, {groupedFaces[6]}];
+];
 
-faces2 = generateFaces[6, 3, 2];
-groupedFaces = GroupBy[faces2, Length];
-components2 = Map[groupedFaces, {12}];
+If[uniformShape == "Grunbaum16",
+	faces = generateFaces[6, 3, 2];
+	groupedFaces = GroupBy[faces, Length];
 
-components = Join[components1, components2];
-(* components = components2; *)
+	faces4 = {groupedFaces[4]};
+	faces12 = Values[GroupBy[groupedFaces[12], centerMod3]];
+	components = Join[faces4, faces12];
+];
+
+If[uniformShape == "Grunbaum15",
+	faces1 = generateFaces[6, 3, 1];
+	groupedFaces = GroupBy[faces1, Length];
+
+	faces3 = {groupedFaces[3]};
+	faces6 = {groupedFaces[6]};
+
+	faces2 = generateFaces[6, 3, 2];
+	groupedFaces = GroupBy[faces2, Length];
+	faces12 = Values[GroupBy[groupedFaces[12], centerMod3]];
+
+	components = Join[faces3, faces6, faces12];
+];
 
 componentsStereo = If[projectToBall, Map[radius stereo[# / radius]&, components, {3}], components];
 exportFrame[componentsStereo, 0, 1, "test"];
