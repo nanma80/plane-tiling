@@ -426,9 +426,8 @@ exportAnimation[] := Module[
 
 			truncateStage = Ceiling[stage/(1 + stillStages)];
 			truncateSr = If[truncateStage * (1 + stillStages) == stage, sr, 0];
-			components = movedComponents;
 
-			componentsStereo = If[projectToBall, Map[radius stereo[# / radius]&, components, {3}], components];
+			componentsStereo = If[projectToBall, Map[radius stereo[# / radius]&, movedComponents, {3}], movedComponents];
 
 			frameIndex = (stage - 1) * framesPerStage + srId;
 			exportFrame[componentsStereo, 0, frameIndex, outputFolderName];
