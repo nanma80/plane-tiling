@@ -58,7 +58,7 @@ splitEdgeParts = 8;
 
 imageFolder = "output";
 (* viewPointBeforeRotation = If[topView, {1, 0, 0}, {3, -2.5, 3.5}]; *)
-viewPointBeforeRotation = {-1, 0, -0.2};
+viewPointBeforeRotation = {1, -1, 1};
 rotationLighting = Transpose[RotationMatrix[{{0.8, -1.0, 1.2}, viewPointBeforeRotation}]];
 
 Needs["POVRayRender`"];
@@ -374,7 +374,7 @@ exportFrame[components_, spinAngle_, stage_, sr_, frameIndex_, outputFolderName_
 	graph = Graphics3D[
 		elements,
 		ViewPoint -> viewPointBeforeRotation.Transpose[rotationLighting] * 100,
-		ViewVertical -> {1, 0, 0.01}.Transpose[rotationLighting],
+		ViewVertical -> {1, 0, 1}.Transpose[rotationLighting],
 		PlotRange -> {{viewCenter[[1]]-range, viewCenter[[1]]+range}, {viewCenter[[2]]-range, viewCenter[[2]]+range}, {viewCenter[[3]]-range, viewCenter[[3]]+range}},
 		Lighting -> lighting
 	];
