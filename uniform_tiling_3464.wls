@@ -7,11 +7,11 @@ https://en.wikipedia.org/wiki/Uniform_tiling#Expanded_lists_of_uniform_tilings
 
 
 (* nGenerations = 10; *)
-nGenerations = 7;
-(* nGenerations = 13; *)
+(* nGenerations = 7; *)
+nGenerations = 13;
 (* nGenerations = 0; *)
 
-framesPerStage = 5;
+framesPerStage = 100;
 
 stillStages = 2;
 
@@ -22,7 +22,7 @@ projectToBall = True;
 (* projectToBall = False; *)
 
 topView = True;
-(* topView = False; *)
+topView = False;
 If[projectToBall == False, topView = True];
 
 trackVertices = False;
@@ -58,7 +58,7 @@ splitEdgeParts = 8;
 
 imageFolder = "output";
 viewPointBeforeRotation = If[topView, {1, 0, 0}, {-3, -2.5, 3.5}];
-rotationLighting = Transpose[RotationMatrix[{{0.5, -1.0, 1.5}, viewPointBeforeRotation}]];
+rotationLighting = Transpose[RotationMatrix[{{0.8, -1.0, 1.2}, viewPointBeforeRotation}]];
 
 Needs["POVRayRender`"];
 ConfigurePOVRayRender["POVRayPath" -> "C:\\Program Files\\POV-Ray\\v3.7\\bin\\pvengine64.exe"];
@@ -359,7 +359,7 @@ elements3D[faces_, spinAngle_,  stage_, sr_, color_] := Module[
 
 exportFrame[components_, spinAngle_, stage_, sr_, frameIndex_, outputFolderName_] := Module[
 	{},
-
+	(* Return[]; *)
 	elements = Union[ Table[elements3D[components[[k]], spinAngle, stage, sr, colors[[k]] ], {k, 1, Length[components]}] ];
 
 	(* rangeZoom = Sqrt[maxRatio] * 1.2 * If[p < 6, 1, 0.5]; *)
@@ -449,7 +449,6 @@ exportAnimation[] := Module[
 			sr = srId/framesPerStage;
 			Print["sr = " <> ToString[N[sr]]];
 			yOffset = 3 Mod[sr, 1];
-			Print[yOffset];
 			movedComponents = Map[(# + {0, yOffset, 0})&, components, {3}];
 
 			truncateStage = Ceiling[stage/(1 + stillStages)];
@@ -463,7 +462,7 @@ exportAnimation[] := Module[
 	];
 
 	frameCount = frameIndex;
-	delay = If[frameCount >= 50, 3, Floor[500/frameCount]];
+	delay = If[frameCount >= 100, 3, Floor[900/frameCount]];
 
 	gifCommand = "magick convert -quiet +repage -alpha remove -loop 0 -delay " <> IntegerString[delay] <> " -dispose 2 " <> outputFolder <> "\\spinning_frame*.png " <> gifFolder <> "\\" <> gifFileName <> ".gif";
 
