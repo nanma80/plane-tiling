@@ -11,9 +11,9 @@ nGenerations = 7;
 (* nGenerations = 13; *)
 (* nGenerations = 0; *)
 
-framesPerStage = 10;
+framesPerStage = 5;
 
-stillStages = 0;
+stillStages = 2;
 
 exportToPov = True;
 highlightCenter = False;
@@ -254,7 +254,7 @@ generateFaces[p_, q_, option_] := Module[
 	faces
 ]
 
-elements3D[faces_, spinAngle_, color_] := Module[
+elements3D[faces_, spinAngle_,  stage_, sr_, color_] := Module[
 	{allEdges, edges, allVertices, vertices, selectedFaces, displayFaces},
 
 	rotation = RotationMatrix[spinAngle, {1, 0, 0}];	
@@ -263,16 +263,9 @@ elements3D[faces_, spinAngle_, color_] := Module[
 	(* kleinFaces = Map[getKlein, faces, {2}]; *)
 	displayFaces = Map[getHyperboloid, selectedFaces, {2}];
 
-	(* Print["There are " <> IntegerString[Length[selectedFaces]] <> " faces."]; *)
 	allEdges = Flatten[Map[getEdgesFromFace, selectedFaces], 1];
 	edges = Union[allEdges , SameTest -> sameEdge];
 
-	(* Print["There are " <> IntegerString[Length[edges]] <> " edges in total."]; *)
-	(* norm = HNorm[edges[[1]][[1]]]; *)
-
-	(* splitEdges = Flatten[ Map[splitEdge[#, splitEdgeParts]&, edges], 1]; *)
-	(* splitEdges = Map[HNormalize[#, norm]&, splitEdges, {2}]; *)
-	(* Print["There are " <> IntegerString[Length[splitEdges]] <> " edges after split."]; *)
 	displayEdges = Map[getHyperboloid, edges, {2}];
 
 	allVertices = Round[Flatten[displayEdges, 1], epsilon];
@@ -297,8 +290,43 @@ elements3D[faces_, spinAngle_, color_] := Module[
 	(* centeredVertices = displayCenteredFaces[[1]]; *)
 
 	(* planar *)
-	opacity = If[topView, 1, 1];
+	opacity = 1;
 	lighting = {{"Point", White, {50, -50, 50}}};
+
+	(* 
+		stage 1:
+			sr = 0: 3464
+			sr > 0 and < 1: fading out 4
+		stage 2:
+			sr = 0: Grunbaum 15: removed 4
+			sr > 0 and < 1: fading in 4 and fading out 3 and 6
+		stage 3:
+			sr = 0: Grunbaum 16: removed 3 and 6
+			sr > 0 and < 1: fading in 3 and 6
+ 	*)
+
+ 	faceSides = Length[displayFaces[[1]]];
+
+ 	If[stage == 1,
+ 		If[faceSides == 4,
+ 			opacity = 1 - sr;
+ 		];
+ 	];
+
+ 	If[stage == 2,
+ 		If[faceSides == 4,
+ 			opacity = sr;
+ 		];
+ 		If[faceSides == 3 || faceSides == 6,
+ 			opacity = 1 - sr;
+ 		];
+ 	];
+
+ 	If[stage == 3,
+ 		If[faceSides == 3 || faceSides == 6,
+ 			opacity = sr;
+ 		];
+ 	];
 
 	elements = {
 			{
@@ -329,10 +357,10 @@ elements3D[faces_, spinAngle_, color_] := Module[
 	elements
 ];
 
-exportFrame[components_, spinAngle_, frameIndex_, outputFolderName_] := Module[
+exportFrame[components_, spinAngle_, stage_, sr_, frameIndex_, outputFolderName_] := Module[
 	{},
 
-	elements = Union[ Table[elements3D[components[[k]], spinAngle, colors[[k]] ], {k, 1, Length[components]}] ];
+	elements = Union[ Table[elements3D[components[[k]], spinAngle, stage, sr, colors[[k]] ], {k, 1, Length[components]}] ];
 
 	(* rangeZoom = Sqrt[maxRatio] * 1.2 * If[p < 6, 1, 0.5]; *)
 	
@@ -397,14 +425,14 @@ exportAnimation[] := Module[
 	faces3 = {groupedFaces[3]};
 	faces4 = {groupedFaces[4]};
 	faces6 = {groupedFaces[6]};
-	hexagonCenters = Round[Map[Mean, groupedFaces[6]], epsilon];
+	(* hexagonCenters = Round[Map[Mean, groupedFaces[6]], epsilon]; *)
 	(* Print[hexagonCenters]; *)
 	(* Exit[]; *)
 
 	faces2 = generateFaces[6, 3, 2];
 	groupedFaces = GroupBy[faces2, Length];
 	faces12 = Values[GroupBy[groupedFaces[12], centerMod3]];
-	dodecagonCenters = Round[Map[Mean, groupedFaces[12]], epsilon];
+	(* dodecagonCenters = Round[Map[Mean, groupedFaces[12]], epsilon]; *)
 	(* Print[dodecagonCenters]; *)
 	(* Exit[]; *)
 
@@ -414,10 +442,10 @@ exportAnimation[] := Module[
 		Grunbaum 16: remove 3, 6
  	*)
 
-	stageCount = 1;
+	stageCount = 3;
 
 	For[stage = 1, stage <= stageCount * (1 + stillStages), stage++,
-		For[srId = 0, srId <= framesPerStage, srId ++,
+		For[srId = 1, srId <= framesPerStage, srId ++,
 			sr = srId/framesPerStage;
 			Print["sr = " <> ToString[N[sr]]];
 			yOffset = 3 Mod[sr, 1];
@@ -430,7 +458,7 @@ exportAnimation[] := Module[
 			componentsStereo = If[projectToBall, Map[radius stereo[# / radius]&, movedComponents, {3}], movedComponents];
 
 			frameIndex = (stage - 1) * framesPerStage + srId;
-			exportFrame[componentsStereo, 0, frameIndex, outputFolderName];
+			exportFrame[componentsStereo, 0, truncateStage, truncateSr, frameIndex, outputFolderName];
 		];
 	];
 
