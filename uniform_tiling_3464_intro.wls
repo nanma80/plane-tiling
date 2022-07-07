@@ -13,17 +13,19 @@ nGenerations = 7;
 
 framesPerStage = 10;
 
-stillStages = 1;
+stillStages = 0;
 
 exportToPov = True;
 highlightCenter = False;
 
-projectToBall = True;
+(* projectToBall = True; *)
 (* projectToBall = False; *)
+
+(* 1: ball, 0: plane. otherwise in between *)
+projectToBallRatio = 0.8;
 
 topView = True;
 (* topView = False; *)
-(* If[projectToBall == False, topView = True]; *)
 
 trackVertices = False;
 
@@ -62,7 +64,7 @@ introRotation = Pi/2 * 1.5;
 viewPointBeforeRotation = {1, 0, 0};
 viewPointBeforeRotation = viewPointBeforeRotation.RotationMatrix[introRotation, {0, 1, 0}];
 (* rotationLighting = Transpose[RotationMatrix[{{0.8, -1.0, 1.2}, viewPointBeforeRotation}]]; *)
-rotationLighting = RotationMatrix[-introRotation - Pi/4, {0, 1, 0}];
+rotationLighting = RotationMatrix[Pi * 0.3, {1, 0, 0}].RotationMatrix[introRotation - Pi/4, {0, 1, 0}].RotationMatrix[-Pi * 0.3, {1, 0, 0}];
 viewVerticalBeforeRotation = viewPointBeforeRotation.RotationMatrix[Pi/2, {0, 1, 0}];
 (* viewVerticalBeforeRotation = {-1, 0, 0}; *)
 
@@ -151,7 +153,7 @@ boostMatrix[angle_, axis_] := RotationMatrix[Arg[axis[[2]] + I axis[[3]]], {1, 0
 
 boosted[vertices_, center_, axis_, angle_] := Map[# + center &, Map[# - center &, vertices].boostMatrix[angle, axis]];
 
-shapeWithParams = shape <> "_intro_" <> IntegerString[nGenerations] <> If[projectToBall, "", "_no_projection"];
+shapeWithParams = shape <> "_intro_" <> IntegerString[nGenerations];
 
 getGenerator[p_, q_] := Module[
 	{signature, p0, p1, p2, otherp2, ch2psi},
@@ -463,13 +465,14 @@ exportAnimation[] := Module[
 		For[srId = 0, srId <= framesPerStage, srId ++,
 			sr = srId/framesPerStage;
 			Print["sr = " <> ToString[N[sr]]];
-			yOffset = 3 Mod[sr, 1];
+			yOffset = 3 Mod[sr, 1] * 0;
 			movedComponents = Map[(# + {0, yOffset, 0})&, components, {3}];
 
 			truncateStage = Ceiling[stage/(1 + stillStages)];
 			truncateSr = If[truncateStage * (1 + stillStages) == stage, sr, 0];
 
-			componentsStereo = If[projectToBall, Map[radius stereo[# / radius]&, movedComponents, {3}], movedComponents];
+			projectToBallRatio = sr;
+			componentsStereo = Map[(projectToBallRatio radius stereo[# / radius] + (1-projectToBallRatio) #)&, movedComponents, {3}];
 
 			frameIndex = (stage - 1) * framesPerStage + srId;
 			exportFrame[componentsStereo, 0, truncateStage, truncateSr, frameIndex, outputFolderName];
