@@ -57,9 +57,23 @@ colors = {Yellow, Green, Red,   Blue, Purple, Cyan};
 splitEdgeParts = 8;
 
 imageFolder = "output";
+introRotation = Pi/2 * 1.5;
 (* viewPointBeforeRotation = If[topView, {1, 0, 0}, {3, -2.5, 3.5}]; *)
-viewPointBeforeRotation = {1, -1, 1};
-rotationLighting = Transpose[RotationMatrix[{{0.8, -1.0, 1.2}, viewPointBeforeRotation}]];
+viewPointBeforeRotation = {1, 0, 0};
+viewPointBeforeRotation = viewPointBeforeRotation.RotationMatrix[introRotation, {0, 1, 0}];
+(* rotationLighting = Transpose[RotationMatrix[{{0.8, -1.0, 1.2}, viewPointBeforeRotation}]]; *)
+rotationLighting = RotationMatrix[-introRotation - Pi/4, {0, 1, 0}];
+viewVerticalBeforeRotation = viewPointBeforeRotation.RotationMatrix[Pi/2, {0, 1, 0}];
+(* viewVerticalBeforeRotation = {-1, 0, 0}; *)
+
+Print["before rotation"];
+Print[viewPointBeforeRotation];
+Print[rotationLighting];
+Print["after rotation"];
+Print[viewPointBeforeRotation.Transpose[rotationLighting]];
+Print[viewVerticalBeforeRotation.Transpose[rotationLighting]];
+
+(* Exit[]; *)
 
 Needs["POVRayRender`"];
 ConfigurePOVRayRender["POVRayPath" -> "C:\\Program Files\\POV-Ray\\v3.7\\bin\\pvengine64.exe"];
@@ -374,7 +388,7 @@ exportFrame[components_, spinAngle_, stage_, sr_, frameIndex_, outputFolderName_
 	graph = Graphics3D[
 		elements,
 		ViewPoint -> viewPointBeforeRotation.Transpose[rotationLighting] * 100,
-		ViewVertical -> {1, 0, 1}.Transpose[rotationLighting],
+		ViewVertical -> viewVerticalBeforeRotation.Transpose[rotationLighting],
 		PlotRange -> {{viewCenter[[1]]-range, viewCenter[[1]]+range}, {viewCenter[[2]]-range, viewCenter[[2]]+range}, {viewCenter[[3]]-range, viewCenter[[3]]+range}},
 		Lighting -> lighting
 	];
