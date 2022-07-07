@@ -22,7 +22,7 @@ highlightCenter = False;
 (* projectToBall = False; *)
 
 (* 1: ball, 0: plane. otherwise in between *)
-projectToBallRatio = 0.8;
+projectToBallRatio = 1;
 
 topView = True;
 (* topView = False; *)
@@ -323,27 +323,6 @@ elements3D[faces_, spinAngle_,  stage_, sr_, color_] := Module[
  	*)
 
  	faceSides = Length[displayFaces[[1]]];
-
- 	If[stage == 1,
- 		If[faceSides == 4,
- 			opacity = 1 - sr;
- 		];
- 	];
-
- 	If[stage == 2,
- 		If[faceSides == 4,
- 			opacity = sr;
- 		];
- 		If[faceSides == 3 || faceSides == 6,
- 			opacity = 1 - sr;
- 		];
- 	];
-
- 	If[stage == 3,
- 		If[faceSides == 3 || faceSides == 6,
- 			opacity = sr;
- 		];
- 	];
 
 	elements = {
 			{
