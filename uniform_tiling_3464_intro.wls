@@ -43,6 +43,8 @@ If[Length[argv] >= 2,
 	p = 6; q = 3; (* default *)
 ];
 
+radiusMultiplier = 100;
+
 radius = 2.5;
 
 maxStellationLevel = If[Length[argv] >= 3, ToExpression[argv[[3]]], 1];
@@ -59,14 +61,6 @@ colors = {Yellow, Green, Red,   Blue, Purple, Cyan};
 splitEdgeParts = 8;
 
 imageFolder = "output";
-introRotation = Pi/2 * 1.5;
-(* viewPointBeforeRotation = If[topView, {1, 0, 0}, {3, -2.5, 3.5}]; *)
-viewPointBeforeRotation = {1, 0, 0};
-viewPointBeforeRotation = viewPointBeforeRotation.RotationMatrix[introRotation, {0, 1, 0}];
-(* rotationLighting = Transpose[RotationMatrix[{{0.8, -1.0, 1.2}, viewPointBeforeRotation}]]; *)
-rotationLighting = RotationMatrix[Pi * 0.3, {1, 0, 0}].RotationMatrix[introRotation - Pi/4, {0, 1, 0}].RotationMatrix[-Pi * 0.3, {1, 0, 0}];
-viewVerticalBeforeRotation = viewPointBeforeRotation.RotationMatrix[Pi/2, {0, 1, 0}];
-(* viewVerticalBeforeRotation = {-1, 0, 0}; *)
 
 Print["before rotation"];
 Print[viewPointBeforeRotation];
@@ -438,10 +432,10 @@ exportAnimation[] := Module[
 		Grunbaum 16: remove 3, 6
  	*)
 
-	stageCount = 1;
+	stageCount = 2;
 
 	For[stage = 1, stage <= stageCount * (1 + stillStages), stage++,
-		For[srId = 0, srId <= framesPerStage, srId ++,
+		For[srId = If[stage==1, 0, 1], srId <= framesPerStage, srId ++,
 			sr = srId/framesPerStage;
 			Print["sr = " <> ToString[N[sr]]];
 			yOffset = 3 Mod[sr, 1] * 0;
@@ -450,8 +444,20 @@ exportAnimation[] := Module[
 			truncateStage = Ceiling[stage/(1 + stillStages)];
 			truncateSr = If[truncateStage * (1 + stillStages) == stage, sr, 0];
 
-			projectToBallRatio = sr;
-			componentsStereo = Map[(projectToBallRatio radius stereo[# / radius] + (1-projectToBallRatio) #)&, movedComponents, {3}];
+			radiusMultiplier = If[truncateStage == 1, 1/(truncateSr + epsilon), 1];
+			
+			(* projectToBallRatio = sr; *)
+			(* componentsStereo = Map[(projectToBallRatio radius radiusMultiplier stereo[# / radius / radiusMultiplier] + (1-projectToBallRatio) #)&, movedComponents, {3}]; *)
+			componentsStereo = Map[(radius radiusMultiplier stereo[# / radius / radiusMultiplier] + radius (1 - radiusMultiplier) {-1, 0, 0} )&, movedComponents, {3}];
+
+			introRotation = If[truncateStage == 1, Pi/2 * (2 - truncateSr), Pi/2 * (1 - truncateSr)];
+			(* viewPointBeforeRotation = If[topView, {1, 0, 0}, {3, -2.5, 3.5}]; *)
+			viewPointBeforeRotation = {1, 0, 0};
+			viewPointBeforeRotation = viewPointBeforeRotation.RotationMatrix[introRotation, {0, 1, 0}];
+			(* rotationLighting = Transpose[RotationMatrix[{{0.8, -1.0, 1.2}, viewPointBeforeRotation}]]; *)
+			rotationLighting = RotationMatrix[Pi * 0.3, {1, 0, 0}].RotationMatrix[introRotation - Pi/4, {0, 1, 0}].RotationMatrix[-Pi * 0.3, {1, 0, 0}];
+			viewVerticalBeforeRotation = viewPointBeforeRotation.RotationMatrix[Pi/2, {0, 1, 0}];
+			(* viewVerticalBeforeRotation = {-1, 0, 0}; *)
 
 			frameIndex = (stage - 1) * framesPerStage + srId;
 			exportFrame[componentsStereo, 0, truncateStage, truncateSr, frameIndex, outputFolderName];
