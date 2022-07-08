@@ -7,8 +7,8 @@ https://en.wikipedia.org/wiki/Uniform_tiling#Expanded_lists_of_uniform_tilings
 
 
 (* nGenerations = 10; *)
-(* nGenerations = 7; *)
-nGenerations = 13;
+nGenerations = 7;
+(* nGenerations = 13; *)
 (* nGenerations = 0; *)
 
 framesPerStage = 100;
@@ -22,7 +22,7 @@ projectToBall = True;
 (* projectToBall = False; *)
 
 topView = True;
-topView = False;
+(* topView = False; *)
 If[projectToBall == False, topView = True];
 
 trackVertices = False;
@@ -57,8 +57,12 @@ colors = {Yellow, Green, Red,   Blue, Purple, Cyan};
 splitEdgeParts = 8;
 
 imageFolder = "output";
+
 viewPointBeforeRotation = If[topView, {1, 0, 0}, {-3, -2.5, 3.5}];
-rotationLighting = Transpose[RotationMatrix[{{0.8, -1.0, 1.2}, viewPointBeforeRotation}]];
+(* rotationLighting = Transpose[RotationMatrix[{{0.8, -1.0, 1.2}, viewPointBeforeRotation}]]; *)
+(* rotationLighting = Transpose[RotationMatrix[{{0.8, -1.0, 1.2}, viewPointBeforeRotation}]]; *)
+rotationLighting = RotationMatrix[- Pi/4, {0, 1, 1}];
+viewVerticalBeforeRotation = viewPointBeforeRotation.RotationMatrix[Pi/2, {0, 1, 1}];
 
 Needs["POVRayRender`"];
 ConfigurePOVRayRender["POVRayPath" -> "C:\\Program Files\\POV-Ray\\v3.7\\bin\\pvengine64.exe"];
@@ -373,7 +377,7 @@ exportFrame[components_, spinAngle_, stage_, sr_, frameIndex_, outputFolderName_
 	graph = Graphics3D[
 		elements,
 		ViewPoint -> viewPointBeforeRotation.Transpose[rotationLighting] * 100,
-		ViewVertical -> If[topView, {0, 0, 1}, {1, 0, 0}].Transpose[rotationLighting],
+		ViewVertical -> viewVerticalBeforeRotation.Transpose[rotationLighting],
 		PlotRange -> {{viewCenter[[1]]-range, viewCenter[[1]]+range}, {viewCenter[[2]]-range, viewCenter[[2]]+range}, {viewCenter[[3]]-range, viewCenter[[3]]+range}},
 		Lighting -> lighting
 	];
@@ -445,7 +449,7 @@ exportAnimation[] := Module[
 	stageCount = 3;
 
 	For[stage = 1, stage <= stageCount * (1 + stillStages), stage++,
-		For[srId = 1, srId <= framesPerStage, srId ++,
+		For[srId = If[stage==1, 0, 1], srId <= framesPerStage, srId ++,
 			sr = srId/framesPerStage;
 			Print["sr = " <> ToString[N[sr]]];
 			yOffset = 3 Mod[sr, 1];
@@ -457,12 +461,12 @@ exportAnimation[] := Module[
 			componentsStereo = If[projectToBall, Map[radius stereo[# / radius]&, movedComponents, {3}], movedComponents];
 
 			frameIndex = (stage - 1) * framesPerStage + srId;
-			exportFrame[componentsStereo, 0, truncateStage, truncateSr, frameIndex, outputFolderName];
+			exportFrame[componentsStereo, -Pi/4, truncateStage, truncateSr, frameIndex, outputFolderName];
 		];
 	];
 
 	frameCount = frameIndex;
-	delay = If[frameCount >= 100, 3, Floor[900/frameCount]];
+	delay = If[frameCount >= 100, 3, Floor[300/framesPerStage]];
 
 	gifCommand = "magick convert -quiet +repage -alpha remove -loop 0 -delay " <> IntegerString[delay] <> " -dispose 2 " <> outputFolder <> "\\spinning_frame*.png " <> gifFolder <> "\\" <> gifFileName <> ".gif";
 

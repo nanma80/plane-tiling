@@ -7,11 +7,11 @@ https://en.wikipedia.org/wiki/Uniform_tiling#Expanded_lists_of_uniform_tilings
 
 
 (* nGenerations = 10; *)
-nGenerations = 7;
-(* nGenerations = 13; *)
+(* nGenerations = 7; *)
+nGenerations = 15;
 (* nGenerations = 0; *)
 
-framesPerStage = 10;
+framesPerStage = 100;
 
 stillStages = 0;
 
@@ -61,15 +61,6 @@ colors = {Yellow, Green, Red,   Blue, Purple, Cyan};
 splitEdgeParts = 8;
 
 imageFolder = "output";
-
-Print["before rotation"];
-Print[viewPointBeforeRotation];
-Print[rotationLighting];
-Print["after rotation"];
-Print[viewPointBeforeRotation.Transpose[rotationLighting]];
-Print[viewVerticalBeforeRotation.Transpose[rotationLighting]];
-
-(* Exit[]; *)
 
 Needs["POVRayRender`"];
 ConfigurePOVRayRender["POVRayPath" -> "C:\\Program Files\\POV-Ray\\v3.7\\bin\\pvengine64.exe"];
@@ -448,24 +439,31 @@ exportAnimation[] := Module[
 			
 			(* projectToBallRatio = sr; *)
 			(* componentsStereo = Map[(projectToBallRatio radius radiusMultiplier stereo[# / radius / radiusMultiplier] + (1-projectToBallRatio) #)&, movedComponents, {3}]; *)
-			componentsStereo = Map[(radius radiusMultiplier stereo[# / radius / radiusMultiplier] + radius (1 - radiusMultiplier) {-1, 0, 0} )&, movedComponents, {3}];
+			componentsStereo = Map[(radius radiusMultiplier stereo[# / radius / radiusMultiplier^1.03] + radius (1 - radiusMultiplier) {-1, 0, 0} )&, movedComponents, {3}];
 
 			introRotation = If[truncateStage == 1, Pi/2 * (2 - truncateSr), Pi/2 * (1 - truncateSr)];
 			(* viewPointBeforeRotation = If[topView, {1, 0, 0}, {3, -2.5, 3.5}]; *)
-			viewPointBeforeRotation = {1, 0, 0};
-			viewPointBeforeRotation = viewPointBeforeRotation.RotationMatrix[introRotation, {0, 1, 0}];
+			viewPointBeforeRotation = {1., 0, 0};
+			viewPointBeforeRotation = viewPointBeforeRotation.RotationMatrix[introRotation, {0, 1, 1}];
 			(* rotationLighting = Transpose[RotationMatrix[{{0.8, -1.0, 1.2}, viewPointBeforeRotation}]]; *)
-			rotationLighting = RotationMatrix[Pi * 0.3, {1, 0, 0}].RotationMatrix[introRotation - Pi/4, {0, 1, 0}].RotationMatrix[-Pi * 0.3, {1, 0, 0}];
-			viewVerticalBeforeRotation = viewPointBeforeRotation.RotationMatrix[Pi/2, {0, 1, 0}];
+			rotationLighting = RotationMatrix[Pi * 0., {1, 0, 0}].RotationMatrix[introRotation - Pi/4, {0, 1, 1}].RotationMatrix[-Pi * 0., {1, 0, 0}];
+			viewVerticalBeforeRotation = viewPointBeforeRotation.RotationMatrix[Pi/2, {0, 1, 1}];
 			(* viewVerticalBeforeRotation = {-1, 0, 0}; *)
+			(* rotationLighting = Transpose[RotationMatrix[-Pi/4, viewVerticalBeforeRotation.Transpose[rotationLighting]]].rotationLighting; *)
+
+			Print["before rotation"];
+			Print[viewPointBeforeRotation];
+			Print["after rotation"];
+			Print[viewPointBeforeRotation.Transpose[rotationLighting]];
+			Print[viewVerticalBeforeRotation.Transpose[rotationLighting]];
 
 			frameIndex = (stage - 1) * framesPerStage + srId;
-			exportFrame[componentsStereo, 0, truncateStage, truncateSr, frameIndex, outputFolderName];
+			exportFrame[componentsStereo, -Pi/4, truncateStage, truncateSr, frameIndex, outputFolderName];
 		];
 	];
 
 	frameCount = frameIndex;
-	delay = If[frameCount >= 100, 3, Floor[900/frameCount]];
+	delay = If[frameCount >= 100, 3, Floor[300/framesPerStage]];
 
 	gifCommand = "magick convert -quiet +repage -alpha remove -loop 0 -delay " <> IntegerString[delay] <> " -dispose 2 " <> outputFolder <> "\\spinning_frame*.png " <> gifFolder <> "\\" <> gifFileName <> ".gif";
 
