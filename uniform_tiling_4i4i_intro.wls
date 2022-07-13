@@ -6,24 +6,24 @@ https://en.wikipedia.org/wiki/Uniform_tiling#Expanded_lists_of_uniform_tilings
  *)
 
 
-(* nGenerations = 13; *)
 (* nGenerations = 10; *)
-nGenerations = 7;
-(* nGenerations = 1; *)
+(* nGenerations = 7; *)
+nGenerations = 15;
+(* nGenerations = 0; *)
 
-framesPerStage = 3;
+framesPerStage = 6;
+stageCount = 3;
 
 stillStages = 0;
 
 exportToPov = True;
 highlightCenter = False;
 
-projectToBall = True;
+(* projectToBall = True; *)
 (* projectToBall = False; *)
 
 topView = True;
 (* topView = False; *)
-If[projectToBall == False, topView = True];
 
 trackVertices = False;
 
@@ -41,7 +41,8 @@ If[Length[argv] >= 2,
 	p = 4; q = 4; (* default *)
 ];
 
-(* radius = 2.5; *)
+radiusMultiplier = 100;
+
 radius = 5;
 
 maxStellationLevel = If[Length[argv] >= 3, ToExpression[argv[[3]]], 1];
@@ -58,18 +59,11 @@ splitEdgeParts = 8;
 
 imageFolder = "output";
 
-viewPointBeforeRotation = If[topView, {1, 0, 0}, {-3, -2.5, 3.5}];
-(* rotationLighting = Transpose[RotationMatrix[{{0.8, -1.0, 1.2}, viewPointBeforeRotation}]]; *)
-(* rotationLighting = Transpose[RotationMatrix[{{0.8, -1.0, 1.2}, viewPointBeforeRotation}]]; *)
-rotationLighting = RotationMatrix[- Pi/4, {0, 1, 1}];
-viewVerticalBeforeRotation = viewPointBeforeRotation.RotationMatrix[Pi/2, {0, 1, 1}];
-
 Needs["POVRayRender`"];
 ConfigurePOVRayRender["POVRayPath" -> "C:\\Program Files\\POV-Ray\\v3.7\\bin\\pvengine64.exe"];
 
 diagonal1[v_] := Round[v[[2]] + v[[3]], epsilon];
 diagonal2[v_] := Round[v[[2]] - v[[3]], epsilon];
-
 centerMod2[face_] := Mod[ Round[Mean[face]][[3]], 2];
 HInner[v_, u_, sig_] := If[sig > 0, 2 * v[[1]] * u[[1]] - Dot[v, u], Dot[v, u]];
 HNormSquare[v_, sig_] := HInner[v, v, sig];
@@ -143,7 +137,7 @@ boostMatrix[angle_, axis_] := RotationMatrix[Arg[axis[[2]] + I axis[[3]]], {1, 0
 
 boosted[vertices_, center_, axis_, angle_] := Map[# + center &, Map[# - center &, vertices].boostMatrix[angle, axis]];
 
-shapeWithParams = shape <> If[topView, "_top", ""] <> "_" <> IntegerString[nGenerations] <> If[projectToBall, "", "_no_projection"];
+shapeWithParams = shape <> "_intro_" <> IntegerString[nGenerations];
 
 getGenerator[p_, q_] := Module[
 	{signature, p0, p1, p2, otherp2, ch2psi},
@@ -299,33 +293,9 @@ elements3D[faces_, spinAngle_,  stage_, sr_, color_] := Module[
 	opacity = 1;
 	lighting = {{"Point", White, {50, -50, 50}}};
 
-	(* 
-		stage 1:
- 	*)
 
  	faceSides = Length[displayFaces[[1]]];
 
-(*  	If[stage == 1,
- 		If[faceSides == 4,
- 			opacity = 1 - sr;
- 		];
- 	];
-
- 	If[stage == 2,
- 		If[faceSides == 4,
- 			opacity = sr;
- 		];
- 		If[faceSides == 3 || faceSides == 6,
- 			opacity = 1 - sr;
- 		];
- 	];
-
- 	If[stage == 3,
- 		If[faceSides == 3 || faceSides == 6,
- 			opacity = sr;
- 		];
- 	];
- *)
 	elements = {
 			{
 				Opacity[opacity], FaceForm[color], Map[Polygon, displayFaces]
@@ -421,10 +391,6 @@ exportAnimation[] := Module[
 	groupedFaces = GroupBy[faces1, Length];
 
 	faces4half = {Select[groupedFaces[4], centerMod2[#] == 0 &]};
-	faces4halfCenters = Map[Mean, faces4half[[1]]];
-	faces4halfCenters = Select[faces4halfCenters, Abs[ #[[3]] ]<epsilon &];
-	(* Print[faces4halfCenters]; *)
-	(* Exit[]; *)
 
  	vertices = Union[Flatten[faces4half[[1]], 1], SameTest -> ApproxSamePoint];
  	Print[Length[vertices]];
@@ -435,19 +401,35 @@ exportAnimation[] := Module[
 
 	components = Join[faces4half, {degenFaces1}, {degenFaces2}];
 
-	stageCount = 1;
-
 	For[stage = 1, stage <= stageCount * (1 + stillStages), stage++,
 		For[srId = If[stage==1, 0, 1], srId <= framesPerStage, srId ++,
 			sr = srId/framesPerStage;
 			Print["sr = " <> ToString[N[sr]]];
-			yOffset = 2 Mod[sr, 1];
+			yOffset = 3 Mod[sr, 1] * 0;
 			movedComponents = Map[(# + {0, yOffset, 0})&, components, {3}];
 
 			truncateStage = Ceiling[stage/(1 + stillStages)];
 			truncateSr = If[truncateStage * (1 + stillStages) == stage, sr, 0];
 
-			componentsStereo = If[projectToBall, Map[radius stereo[# / radius]&, movedComponents, {3}], movedComponents];
+			radiusMultiplier = If[truncateStage == 1, 1/(truncateSr + epsilon), 1];
+			
+			componentsStereo = Map[(radius radiusMultiplier stereo[# / radius / radiusMultiplier^1.03] + radius (1 - radiusMultiplier) {-1, 0, 0} )&, movedComponents, {3}];
+
+			introRotation = Pi/stageCount*(stageCount + 1 - truncateStage - truncateSr);
+			(* viewPointBeforeRotation = If[topView, {1, 0, 0}, {3, -2.5, 3.5}]; *)
+			viewPointBeforeRotation = {1., 0, 0};
+			viewPointBeforeRotation = viewPointBeforeRotation.RotationMatrix[introRotation, {0, 1, 1}];
+			(* rotationLighting = Transpose[RotationMatrix[{{0.8, -1.0, 1.2}, viewPointBeforeRotation}]]; *)
+			rotationLighting = RotationMatrix[Pi * 0., {1, 0, 0}].RotationMatrix[introRotation - Pi/4, {0, 1, 1}].RotationMatrix[-Pi * 0., {1, 0, 0}];
+			viewVerticalBeforeRotation = viewPointBeforeRotation.RotationMatrix[Pi/2, {0, 1, 1}];
+			(* viewVerticalBeforeRotation = {-1, 0, 0}; *)
+			(* rotationLighting = Transpose[RotationMatrix[-Pi/4, viewVerticalBeforeRotation.Transpose[rotationLighting]]].rotationLighting; *)
+
+			Print["before rotation"];
+			Print[viewPointBeforeRotation];
+			Print["after rotation"];
+			Print[viewPointBeforeRotation.Transpose[rotationLighting]];
+			Print[viewVerticalBeforeRotation.Transpose[rotationLighting]];
 
 			frameIndex = (stage - 1) * framesPerStage + srId;
 			exportFrame[componentsStereo, -Pi/4, truncateStage, truncateSr, frameIndex, outputFolderName];
