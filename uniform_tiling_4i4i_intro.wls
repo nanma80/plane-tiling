@@ -11,8 +11,8 @@ https://en.wikipedia.org/wiki/Uniform_tiling#Expanded_lists_of_uniform_tilings
 nGenerations = 40;
 (* nGenerations = 0; *)
 
-framesPerStage = 100;
-stageCount = 3;
+framesPerStage = 200;
+stageCount = 2;
 
 stillStages = 0;
 
@@ -415,7 +415,8 @@ exportAnimation[] := Module[
 			
 			componentsStereo = Map[(radius radiusMultiplier stereo[# / radius / radiusMultiplier^1.03] + radius (1 - radiusMultiplier) {-1, 0, 0} )&, movedComponents, {3}];
 
-			introRotation = Pi/stageCount*(stageCount + 1 - truncateStage - truncateSr);
+			(* introRotation = Pi/stageCount*(stageCount + 1 - truncateStage - truncateSr); *)
+			introRotation = If[truncateStage == 1, Pi/3*(3 - truncateSr), Pi/3*2*(1 - truncateSr)];
 			(* viewPointBeforeRotation = If[topView, {1, 0, 0}, {3, -2.5, 3.5}]; *)
 			viewPointBeforeRotation = {1., 0, 0};
 			viewPointBeforeRotation = viewPointBeforeRotation.RotationMatrix[introRotation, {0, 1, 1}];
