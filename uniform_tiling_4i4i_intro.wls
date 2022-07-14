@@ -8,10 +8,10 @@ https://en.wikipedia.org/wiki/Uniform_tiling#Expanded_lists_of_uniform_tilings
 
 (* nGenerations = 10; *)
 (* nGenerations = 7; *)
-nGenerations = 15;
+nGenerations = 40;
 (* nGenerations = 0; *)
 
-framesPerStage = 6;
+framesPerStage = 100;
 stageCount = 3;
 
 stillStages = 0;
