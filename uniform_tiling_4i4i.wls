@@ -10,10 +10,11 @@ https://en.wikipedia.org/wiki/Uniform_tiling#Expanded_lists_of_uniform_tilings
 (* nGenerations = 10; *)
 nGenerations = 40;
 (* nGenerations = 1; *)
+(* nGenerations = 7; *)
 
 framesPerStage = 100;
 
-stillStages = 0;
+stillStages = 1;
 
 exportToPov = True;
 highlightCenter = False;
@@ -52,7 +53,7 @@ dihedralHyperbolic = 0;
 
 shape = "uniform_4i4i_" <> ToString[p, InputForm] <> "_" <> ToString[q, InputForm];
 
-colors = {Yellow, Blue, Green, Cyan,  Red, Purple  };
+colors = {Blue, Green, Yellow, Cyan,  Red, Purple  };
 
 splitEdgeParts = 8;
 
@@ -260,7 +261,7 @@ generateFaces[p_, q_, option_] := Module[
 	faces
 ];
 
-elements3D[faces_, spinAngle_,  stage_, sr_, color_] := Module[
+elements3D[faces_, spinAngle_,  stage_, sr_, color_, componentIndex_] := Module[
 	{allEdges, edges, allVertices, vertices, selectedFaces, displayFaces},
 
 	rotation = RotationMatrix[spinAngle, {1, 0, 0}];	
@@ -305,60 +306,41 @@ elements3D[faces_, spinAngle_,  stage_, sr_, color_] := Module[
 
  	faceSides = Length[displayFaces[[1]]];
 
-(*  	If[stage == 1,
- 		If[faceSides == 4,
- 			opacity = 1 - sr;
- 		];
+ 	If[stage == 1,
+ 		If[componentIndex >= 2,
+ 			opacity = 1-sr
+ 		],
+		If[stage == componentIndex,
+			opacity = sr,
+			If[ stage < componentIndex,
+				opacity = 0
+			];
+		]; 		
  	];
 
- 	If[stage == 2,
- 		If[faceSides == 4,
- 			opacity = sr;
- 		];
- 		If[faceSides == 3 || faceSides == 6,
- 			opacity = 1 - sr;
- 		];
- 	];
-
- 	If[stage == 3,
- 		If[faceSides == 3 || faceSides == 6,
- 			opacity = sr;
- 		];
- 	];
- *)
 	elements = {
 			{
 				Opacity[opacity], FaceForm[color], Map[Polygon, displayFaces]
 			},
 			{
-				Opacity[1], FaceForm[White], Map[Cylinder[#, thickness]&, displayEdges]
+				Opacity[opacity], FaceForm[White], Map[Cylinder[#, thickness]&, displayEdges]
 			},
 			{
-				Opacity[1], FaceForm[White], Map[Sphere[#[[1]], thickness]&, verticesTally]
+				Opacity[opacity], FaceForm[White], Map[Sphere[#[[1]], thickness]&, verticesTally]
 			}
 	};
 
-	If[highlightCenter,
-		highlightColor = White;
-		elements = Union[
-			elements,
-			{
-				{
-					Opacity[1], FaceForm[highlightColor], Map[Polygon, displayCenteredFaces]
-				},
-				{
-					Opacity[1], FaceForm[highlightColor], Map[Cylinder[#, thickness * 2.2]&, displayCenteredEdges]
-				}
-			}
-		];
+	If[opacity == 0,
+		elements = {};
 	];
+
 	elements
 ];
 
 exportFrame[components_, spinAngle_, stage_, sr_, frameIndex_, outputFolderName_] := Module[
 	{},
 	(* Return[]; *)
-	elements = Union[ Table[elements3D[components[[k]], spinAngle, stage, sr, colors[[k]] ], {k, 1, Length[components]}] ];
+	elements = Union[ Table[elements3D[components[[k]], spinAngle, stage, sr, colors[[k]], k ], {k, 1, Length[components]}] ];
 
 	(* rangeZoom = Sqrt[maxRatio] * 1.2 * If[p < 6, 1, 0.5]; *)
 	
@@ -433,12 +415,12 @@ exportAnimation[] := Module[
  	degenFaces2 = Values[GroupBy[vertices, diagonal2]];
  	degenFaces2 = Select[degenFaces2, Length[#]>2 &];
 
-	components = Join[faces4half, {degenFaces1}, {degenFaces2}];
+	components = Join[{degenFaces1}, {degenFaces2}, faces4half];
 
-	stageCount = 1;
+	stageCount = 3;
 
 	For[stage = 1, stage <= stageCount * (1 + stillStages), stage++,
-		For[srId = If[stage==1, 0, 1], srId <= framesPerStage, srId ++,
+		For[srId = 1, srId <= framesPerStage, srId ++,
 			sr = srId/framesPerStage;
 			Print["sr = " <> ToString[N[sr]]];
 			yOffset = 2 Mod[sr, 1];
