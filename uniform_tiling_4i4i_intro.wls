@@ -402,7 +402,7 @@ exportAnimation[] := Module[
 	components = Join[faces4half, {degenFaces1}, {degenFaces2}];
 
 	For[stage = 1, stage <= stageCount * (1 + stillStages), stage++,
-		For[srId = If[stage==1, 0, 1], srId <= framesPerStage, srId ++,
+		For[srId = 1, srId <= framesPerStage, srId ++,
 			sr = srId/framesPerStage;
 			Print["sr = " <> ToString[N[sr]]];
 			yOffset = 3 Mod[sr, 1] * 0;
