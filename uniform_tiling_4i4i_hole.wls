@@ -282,19 +282,42 @@ elements3D[faces_, spinAngle_,  stage_, sr_, color_] := Module[
 	selectedFacesNoHole = Select[selectedFaces,
 		Length[Intersection[#, {holeCenter}, SameTest -> ApproxSamePoint]] == 0 &
 	];
+	allFacesAfterTruncation = selectedFacesNoHole;
 
 	selectedFacesWithHole = Select[selectedFaces,
 		Length[Intersection[#, {holeCenter}, SameTest -> ApproxSamePoint]] > 0 &
 	];
 
-	displayFaces = Map[getHyperboloid, selectedFacesNoHole, {2}];
-	displayFacesWithHole = Map[getHyperboloid, selectedFacesWithHole, {2}];
-	allEdges = Flatten[Map[getEdgesFromFace, selectedFacesNoHole], 1];
+	truncatedEdges = {};
+
+	For[fid = 1, fid <= Length[selectedFacesWithHole], fid++,
+		faceWithHoles = selectedFacesWithHole[[fid]];
+		vid = Select[Range[Length[faceWithHoles]], ApproxSamePoint[faceWithHoles[[#]], holeCenter]&][[1]];
+		faceWithHoles = RotateLeft[faceWithHoles, vid - 1];
+		truncatedFaceWithHoles = Join[
+			{(faceWithHoles[[1]] + faceWithHoles[[ Length[faceWithHoles] ]])/2},
+			{(faceWithHoles[[1]] + faceWithHoles[[2]])/2},
+			faceWithHoles[[Range[2, Length[faceWithHoles] ]]]
+		];
+		AppendTo[allFacesAfterTruncation, truncatedFaceWithHoles];
+		AppendTo[truncatedEdges, 
+			{
+				(faceWithHoles[[1]] + faceWithHoles[[ Length[faceWithHoles] ]])/2,
+				(faceWithHoles[[1]] + faceWithHoles[[2]])/2
+			}
+		];
+	];
+
+	displayFaces = Map[getHyperboloid, allFacesAfterTruncation, {2}];
+	allEdges = Flatten[Map[getEdgesFromFace, allFacesAfterTruncation], 1];
 	edges = Union[allEdges , SameTest -> sameEdge];
 
 	displayEdges = Map[getHyperboloid, edges, {2}];
+	displayTruncatedEdges = Map[getHyperboloid, truncatedEdges, {2}];
 
 	allVertices = Round[Flatten[displayEdges, 1], epsilon];
+	truncatedVertices = Round[Flatten[displayTruncatedEdges, 1], epsilon];
+
 	vertices = Union[allVertices , SameTest -> ApproxSamePoint];
 	verticesTally = Tally[allVertices];
 	verticesTallyCounts = Map[#[[2]]&, verticesTally];
@@ -315,13 +338,9 @@ elements3D[faces_, spinAngle_,  stage_, sr_, color_] := Module[
 
 	(* centeredVertices = displayCenteredFaces[[1]]; *)
 
-	(* planar *)
 	opacity = 1;
 	lighting = {{"Point", White, {50, -50, 50}}};
 
-	(* 
-		stage 1:
- 	*)
 	range = radius * 0.8;
 	thickness = range * 0.008;
 
@@ -334,43 +353,15 @@ elements3D[faces_, spinAngle_,  stage_, sr_, color_] := Module[
 			},
 			{
 				Opacity[1], FaceForm[White], Map[Sphere[#[[1]], thickness]&, verticesTally]
+			},
+			{
+				Opacity[1], FaceForm[Red], Map[Cylinder[#, thickness * 1.1]&, displayTruncatedEdges]
+			},
+			{
+				Opacity[1], FaceForm[Red], Map[Sphere[#[[1]], thickness * 1.1]&, truncatedVertices]
 			}
 	};
 
-	If[Length[displayFacesWithHole]>0,
-		quads = Flatten[Map[splitFaceToQuads, displayFacesWithHole], 1];
-		For[triangleIndex = 1, triangleIndex <= Length[quads], triangleIndex++,
-			quad = quads[[triangleIndex]];
-			planarPoints[l1_, l2_] := 
-				l2 (l1 quad[[1]] + (1 - l1) quad[[2]]) +
-				(1 - l2) (l1 quad[[4]] + (1 - l1) quad[[3]]);
-			holeRadius = 30 * thickness;
-			surface = ParametricPlot3D[
-				planarPoints[l1, l2], {l1, 0, 1}, {l2, 0, 1},
-				PlotStyle -> {color, Opacity[opacity]}, 
-				Mesh -> None,
-				Axes -> None,
-				RegionFunction -> Function[{x, y, z, l1, l2}, (x - displayHoleCenter[[1]])^2 + (y - displayHoleCenter[[2]])^2 + (z - displayHoleCenter[[3]])^2 > holeRadius^2 ],
-				BoundaryStyle -> None
-			];
-			AppendTo[facesWithHoles, surface];
-		];
-	];
-
-	If[highlightCenter,
-		highlightColor = White;
-		elements = Union[
-			elements,
-			{
-				{
-					Opacity[1], FaceForm[highlightColor], Map[Polygon, displayCenteredFaces]
-				},
-				{
-					Opacity[1], FaceForm[highlightColor], Map[Cylinder[#, thickness * 2.2]&, displayCenteredEdges]
-				}
-			}
-		];
-	];
 	elements
 ];
 
@@ -395,7 +386,7 @@ exportFrame[components_, spinAngle_, stage_, sr_, frameIndex_, outputFolderName_
 	];
 
 	If[Length[facesWithHoles] > 1,
-		graph = Apply[Show, Join[{graph}, facesWithHoles]];
+		(* graph = Apply[Show, Join[{graph}, facesWithHoles]]; *)
 	];
 
 	outputFolder = FileNameJoin[{imageFolder, outputFolderName}];
