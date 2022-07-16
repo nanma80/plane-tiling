@@ -323,10 +323,10 @@ elements3D[faces_, spinAngle_,  stage_, sr_, color_, componentIndex_] := Module[
 				Opacity[opacity], FaceForm[color], Map[Polygon, displayFaces]
 			},
 			{
-				Opacity[opacity], FaceForm[White], Map[Cylinder[#, thickness]&, displayEdges]
+				Opacity[opacity], FaceForm[White], Map[Cylinder[#, thickness*opacity]&, displayEdges]
 			},
 			{
-				Opacity[opacity], FaceForm[White], Map[Sphere[#[[1]], thickness]&, verticesTally]
+				Opacity[opacity], FaceForm[White], Map[Sphere[#[[1]], thickness*opacity]&, verticesTally]
 			}
 	};
 
@@ -339,7 +339,9 @@ elements3D[faces_, spinAngle_,  stage_, sr_, color_, componentIndex_] := Module[
 
 exportFrame[components_, spinAngle_, stage_, sr_, frameIndex_, outputFolderName_] := Module[
 	{},
-	(* Return[]; *)
+	(* If[frameIndex < 100, Return[]]; *)
+	(* If[Mod[frameIndex, 2] == 0, Return[]]; *)
+	Return[];
 	elements = Union[ Table[elements3D[components[[k]], spinAngle, stage, sr, colors[[k]], k ], {k, 1, Length[components]}] ];
 
 	(* rangeZoom = Sqrt[maxRatio] * 1.2 * If[p < 6, 1, 0.5]; *)
