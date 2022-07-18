@@ -8,7 +8,7 @@ https://en.wikipedia.org/wiki/Uniform_tiling#Expanded_lists_of_uniform_tilings
 
 (* nGenerations = 13; *)
 (* nGenerations = 20; *)
-nGenerations = 40;
+nGenerations = 30;
 (* nGenerations = 1; *)
 (* nGenerations = 7; *)
 
@@ -340,7 +340,7 @@ exportFrame[components_, spinAngle_, stage_, sr_, frameIndex_, outputFolderName_
 	{},
 	(* If[frameIndex < 100, Return[]]; *)
 	(* If[Mod[frameIndex, 2] == 0, Return[]]; *)
-	(* Return[]; *)
+	Return[];
 	elements = Union[ Table[elements3D[components[[k]], spinAngle, stage, sr, colors[[k]], k ], {k, 1, Length[components]}] ];
 
 	(* rangeZoom = Sqrt[maxRatio] * 1.2 * If[p < 6, 1, 0.5]; *)

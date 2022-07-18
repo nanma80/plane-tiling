@@ -8,7 +8,7 @@ https://en.wikipedia.org/wiki/Uniform_tiling#Expanded_lists_of_uniform_tilings
 
 (* nGenerations = 10; *)
 (* nGenerations = 7; *)
-nGenerations = 40;
+nGenerations = 30;
 (* nGenerations = 0; *)
 
 framesPerStage = 200;
