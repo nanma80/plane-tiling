@@ -11,8 +11,8 @@ imageSize = {4, 3} * 720 / 3;
 shape = "labs_septic";
 imageFolder = "output";
 exportToPov = True;
-plotPoints = 20;
-maxRecursion = 1;
+plotPoints = 60;
+maxRecursion = 2;
 amax = 0.15;
 amin = -0.45;
 
@@ -35,6 +35,7 @@ exportFrame[aValue_, frameIndex_, outputFolderName_] := Module[
 	{},
 
 	range = 2;
+	renderRange = 3 * range;
 
 (* 	graph = ContourPlot3D[
 	 x^2+y^2+100 z^2 - range^2 == 0, {x, -range, range}, {y, -range, 
@@ -47,15 +48,15 @@ exportFrame[aValue_, frameIndex_, outputFolderName_] := Module[
 	]; *)
 
 	graph = ContourPlot3D[
-	 sFunction[x, y, z, aValue, 1] == 0, {x, -range, range}, {y, -range, 
-	  range}, {z, -range, range}, 
-	 (* RegionFunction -> Function[{x, y, z}, x^2 + y^2 <= range^2],  *)
+	 sFunction[x, y, z, aValue, 1] == 0, {x, -renderRange, renderRange}, {y, -renderRange, 
+	  renderRange}, {z, -renderRange, renderRange}, 
 	 RegionBoundaryStyle -> None, PlotPoints -> plotPoints, 
 	 Boxed -> False, Axes -> False, MaxRecursion -> maxRecursion, 
 	 MeshFunctions -> {0 &}, MeshShading -> { { Pink } },
-	 ViewPoint -> {70, -40, 60}
+	 ViewPoint -> {70, -40, 90}
 	];
 
+	graph = Show[graph, PlotRange->{{-range, range},{-range, range},{-range, range}}];
 
 	outputFolder = FileNameJoin[{imageFolder, outputFolderName}];
 	If[!DirectoryQ[outputFolder], CreateDirectory[outputFolder]];
