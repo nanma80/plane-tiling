@@ -6,15 +6,15 @@ https://en.wikipedia.org/wiki/Uniform_tiling#Expanded_lists_of_uniform_tilings
  *)
 
 
-frameCount = 5;
+frameCount = 20;
 imageSize = {4, 3} * 720 / 3;
 shape = "labs_septic";
 imageFolder = "output";
 exportToPov = True;
-plotPoints = 60;
+plotPoints = 120;
 maxRecursion = 2;
-amax = 0.15;
-amin = -0.45;
+amax = 0.2;
+amin = -0.6;
 
 Needs["POVRayRender`"];
 ConfigurePOVRayRender["POVRayPath" -> "C:\\Program Files\\POV-Ray\\v3.7\\bin\\pvengine64.exe"];
@@ -37,23 +37,13 @@ exportFrame[aValue_, frameIndex_, outputFolderName_] := Module[
 	range = 2;
 	renderRange = 3 * range;
 
-(* 	graph = ContourPlot3D[
-	 x^2+y^2+100 z^2 - range^2 == 0, {x, -range, range}, {y, -range, 
-	  range}, {z, -range, range}, 
-	 RegionFunction -> Function[{x, y, z}, x^2 + y^2 + z^2 <= range^2], 
-	 RegionBoundaryStyle -> None, PlotPoints -> plotPoints, 
-	 Boxed -> False, Axes -> False, MaxRecursion -> maxRecursion, 
-	 MeshFunctions -> {0 &}, MeshShading -> { { Pink } },
-	 ViewPoint -> {50, -50, 50}
-	]; *)
-
 	graph = ContourPlot3D[
 	 sFunction[x, y, z, aValue, 1] == 0, {x, -renderRange, renderRange}, {y, -renderRange, 
 	  renderRange}, {z, -renderRange, renderRange}, 
-	 RegionBoundaryStyle -> None, PlotPoints -> plotPoints, 
+	 PlotPoints -> plotPoints, 
 	 Boxed -> False, Axes -> False, MaxRecursion -> maxRecursion, 
 	 MeshFunctions -> {0 &}, MeshShading -> { { Pink } },
-	 ViewPoint -> {70, -40, 90}
+	 ViewPoint -> {50, -50, 90}
 	];
 
 	graph = Show[graph, PlotRange->{{-range, range},{-range, range},{-range, range}}];
