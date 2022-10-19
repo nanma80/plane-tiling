@@ -2,12 +2,13 @@
 
 (* nGenerations = 10; *)
 (* nGenerations = 7; *)
-nGenerations = 13;
+(* nGenerations = 15; *)
+nGenerations = 25;
 (* nGenerations = 0; *)
 (* nGenerations = 3; *)
 
 framesPerStage = 100;
-framesPerStage = 10;
+(* framesPerStage = 10; *)
 
 stillStages = 1;
 
@@ -242,11 +243,12 @@ getArea[face_]:= Area[Polygon[ Map[{#[[2]], #[[3]]}&, face] ]];
 elements3D[allFaces_, spinAngle_, color_] := Module[
 	{faces, allEdges, edges, allVertices, vertices, selectedFaces, displayFaces},
 
-	(* areas = Sort[Map[getArea, allFaces]]; *)
+	maxAreas = Max[Map[getArea, allFaces]];
 	(* Print[areas]; *)
 	faces = Select[allFaces, getArea[#] < 3.0 &];
 	Print["filtering faces: "];
 	Print[{Length[allFaces], Length[faces], Length[allFaces]- Length[faces]}];
+	Print[maxAreas];
 
 	(* Exit[]; *)
 	rotation = RotationMatrix[spinAngle, {1, 0, 0}];	
@@ -254,37 +256,6 @@ elements3D[allFaces_, spinAngle_, color_] := Module[
 	selectedFaces = Map[(#.rotation.rotationLighting) &, faces, {2}];
 	(* kleinFaces = Map[getKlein, faces, {2}]; *)
 	displayFaces = Map[getHyperboloid, selectedFaces, {2}];
-
-	(* Print["There are " <> IntegerString[Length[selectedFaces]] <> " faces."]; *)
-	allEdges = Flatten[Map[getEdgesFromFace, selectedFaces], 1];
-	edges = Union[allEdges , SameTest -> sameEdge];
-
-	(* Print["There are " <> IntegerString[Length[edges]] <> " edges in total."]; *)
-	(* norm = HNorm[edges[[1]][[1]]]; *)
-
-	(* splitEdges = Flatten[ Map[splitEdge[#, splitEdgeParts]&, edges], 1]; *)
-	(* splitEdges = Map[HNormalize[#, norm]&, splitEdges, {2}]; *)
-	(* Print["There are " <> IntegerString[Length[splitEdges]] <> " edges after split."]; *)
-	displayEdges = Map[getHyperboloid, edges, {2}];
-
-	allVertices = Round[Flatten[displayEdges, 1], epsilon];
-	vertices = Union[allVertices , SameTest -> ApproxSamePoint];
-	verticesTally = Tally[allVertices];
-	verticesTallyCounts = Map[#[[2]]&, verticesTally];
-	tallyTally = Tally[verticesTallyCounts];
-	(* Print["There are " <> IntegerString[Length[vertices]] <> " vertices in total."]; *)
-	Print[Map[Length, {faces, allEdges, edges, allVertices, vertices}]];
-	Print[tallyTally];
-
-	centeredFaces = Select[faces, (Abs[Total[#][[2]]]<0.001)&&(Abs[Total[#][[3]]]<0.001)&];
-	displayCenteredFaces = Map[getHyperboloid, centeredFaces, {2}];
-	displayCenteredFaces = Map[(# + {0.001, 0, 0})&, displayCenteredFaces, {2}];
-
-	centeredEdges = Flatten[Map[getEdgesFromFace, centeredFaces], 1];
-	
-	(* splitCenteredEdges = Map[HNormalize[#, norm]&, splitCenteredEdges, {2}]; *)
-	(* Print["There are " <> IntegerString[Length[centeredEdges]] <> " centered edges after split."]; *)
-	displayCenteredEdges = Map[getHyperboloid, centeredEdges, {2}];
 
 	(* centeredVertices = displayCenteredFaces[[1]]; *)
 
@@ -296,33 +267,17 @@ elements3D[allFaces_, spinAngle_, color_] := Module[
 			{
 				Opacity[opacity], FaceForm[color], Map[Polygon, displayFaces]
 			}
-(* 			{
-				Opacity[1], FaceForm[White], Map[Cylinder[#, thickness]&, displayEdges]
-			},
-			{
-				Opacity[1], FaceForm[White], Map[Sphere[#[[1]], thickness]&, verticesTally]
-			} *)
 	};
 
-	If[highlightCenter,
-		highlightColor = White;
-		elements = Union[
-			elements,
-			{
-				{
-					Opacity[1], FaceForm[highlightColor], Map[Polygon, displayCenteredFaces]
-				},
-				{
-					Opacity[1], FaceForm[highlightColor], Map[Cylinder[#, thickness * 2.2]&, displayCenteredEdges]
-				}
-			}
-		];
-	];
 	elements
 ];
 
 exportFrame[components_, spinAngle_, frameIndex_, outputFolderName_] := Module[
 	{},
+
+	Return[];
+	(* If[EvenQ[frameIndex] == True, Return[]]; *)
+	(* If[EvenQ[frameIndex] == False, Return[]]; *)
 
 	elements = Union[ Table[elements3D[components[[k]], spinAngle, colors[[k]] ], {k, 1, Length[components]}] ];
 
