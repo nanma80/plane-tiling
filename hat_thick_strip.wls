@@ -12,9 +12,7 @@ nGenerations = 30;
 (* nGenerations = 1; *)
 (* nGenerations = 7; *)
 
-framesPerStage = 1;
-
-stillStages = 1;
+frameCount = 4;
 
 exportToPov = True;
 highlightCenter = False;
@@ -23,8 +21,6 @@ highlightCenter = False;
 projectToBall = False;
 
 topView = True;
-(* topView = False; *)
-If[projectToBall == False, topView = True];
 
 trackVertices = False;
 
@@ -42,8 +38,14 @@ If[Length[argv] >= 2,
 	p = 3; q = 6; (* default *)
 ];
 
-(* radius = 2.5; *)
-radius = 25;
+(* radius = 15; *)
+radius = 5;
+
+periodStart = -3; 
+periodEnd = 1;
+
+periodStart = 0; 
+periodEnd = 0;
 
 maxStellationLevel = If[Length[argv] >= 3, ToExpression[argv[[3]]], 1];
 maxRatio = Tan[maxStellationLevel Pi/p]/Tan[Pi/p];
@@ -122,10 +124,10 @@ trimFaces[faces_] := Module[
 	trimmedFaces
 ];
 
-stereo[p_] := {
-	(-1 + p[[2]]^2 + p[[3]]^2)/(1 +	p[[2]]^2 + p[[3]]^2),
-	2 p[[2]]/(1 + p[[2]]^2 + p[[3]]^2), 
-	2 p[[3]]/(1 + p[[2]]^2 + p[[3]]^2)	
+stereo3[p_] := {
+	2 p[[1]]/(1 + p[[1]]^2 + p[[2]]^2), 
+	2 p[[2]]/(1 + p[[1]]^2 + p[[2]]^2),
+	(1 - p[[1]]^2 - p[[2]]^2)/(1 +	p[[1]]^2 + p[[2]]^2)
 };
 
 scaleFace[face_, ratio_, stellationLevel_] := Module[
@@ -149,15 +151,12 @@ boostMatrix[angle_, axis_] := RotationMatrix[Arg[axis[[2]] + I axis[[3]]], {1, 0
 
 boosted[vertices_, center_, axis_, angle_] := Map[# + center &, Map[# - center &, vertices].boostMatrix[angle, axis]];
 
-shapeWithParams = shape <> If[topView, "_top", ""] <> "_" <> IntegerString[nGenerations] <> If[projectToBall, "", "_no_projection"];
+shapeWithParams = shape <> "_" <> IntegerString[frameCount] <> If[projectToBall, "", "_no_projection"];
 
-elements3D[faces_, spinAngle_,  stage_, sr_, color_, componentIndex_] := Module[
+elements3D[faces_] := Module[
 	{allEdges, edges, allVertices, vertices, selectedFaces, displayFaces},
 
-	rotation = RotationMatrix[spinAngle, {1, 0, 0}];	
-	(* selectedFaces = Select[faces, (Total[#]/Length[#])[[1]] < 10 &]; *)
-	selectedFaces = Map[(#.rotation.rotationLighting) &, faces, {2}];
-	(* kleinFaces = Map[getKlein, faces, {2}]; *)
+	selectedFaces = Map[(#.rotationLighting) &, faces, {2}];
 	displayFaces = Map[getHyperboloid, selectedFaces, {2}];
 
 	allEdges = Flatten[Map[getEdgesFromFace, selectedFaces], 1];
@@ -168,31 +167,6 @@ elements3D[faces_, spinAngle_,  stage_, sr_, color_, componentIndex_] := Module[
 	allVertices = Round[Flatten[displayEdges, 1], epsilon];
 	vertices = Union[allVertices , SameTest -> ApproxSamePoint];
 	verticesTally = Tally[allVertices];
-	verticesTallyCounts = Map[#[[2]]&, verticesTally];
-	tallyTally = Tally[verticesTallyCounts];
-	(* Print["There are " <> IntegerString[Length[vertices]] <> " vertices in total."]; *)
-	(* Print[Map[Length, {faces, allEdges, edges, allVertices, vertices}]]; *)
-	(* Print[tallyTally]; *)
-
-	centeredFaces = Select[faces, (Abs[Total[#][[2]]]<0.001)&&(Abs[Total[#][[3]]]<0.001)&];
-	displayCenteredFaces = Map[getHyperboloid, centeredFaces, {2}];
-	displayCenteredFaces = Map[(# + {0.001, 0, 0})&, displayCenteredFaces, {2}];
-
-	centeredEdges = Flatten[Map[getEdgesFromFace, centeredFaces], 1];
-	
-	(* splitCenteredEdges = Map[HNormalize[#, norm]&, splitCenteredEdges, {2}]; *)
-	(* Print["There are " <> IntegerString[Length[centeredEdges]] <> " centered edges after split."]; *)
-	displayCenteredEdges = Map[getHyperboloid, centeredEdges, {2}];
-
-	(* centeredVertices = displayCenteredFaces[[1]]; *)
-
-	(* planar *)
-
-	(* 
-		stage 1:
- 	*)
-
- 	faceSides = Length[displayFaces[[1]]];
 
 	elements = {
 			Table[
@@ -212,17 +186,113 @@ elements3D[faces_, spinAngle_,  stage_, sr_, color_, componentIndex_] := Module[
 	elements
 ];
 
-exportFrame[components_, spinAngle_, stage_, sr_, frameIndex_, outputFolderName_] := Module[
+hatPrototype =
+	{
+		{0,0},
+		{0,Sqrt[3]},
+		{1,Sqrt[3]},
+		{3/2,(3 Sqrt[3])/2},
+		{3,Sqrt[3]},
+		{3,0},
+		{4,0},
+		{9/2,-(Sqrt[3]/2)},
+		{3,-Sqrt[3]},
+		{3/2,-(Sqrt[3]/2)},
+		{1,-Sqrt[3]},
+		{-1,-Sqrt[3]},
+		{-(3/2),-(Sqrt[3]/2)}
+	};
+
+getTriangle[hat_] := hat[[ {1, 5, 9} ]];
+getCenter[hat_] := Mean[getTriangle[hat]];
+
+hatPrototype = Map[# - getCenter[hatPrototype] &, hatPrototype];
+hatTriangle = getTriangle[hatPrototype];
+
+hatTriangle = getTriangle[hatPrototype];
+triangleCenterVectors = Reverse[Sort[2 * Map[Mean, getEdgesFromFace[hatTriangle]]]];
+
+(* 
+	Three transforms in sequence:
+	1. flip. If True, flip around the y axis. x -> -x. y unchanged
+	2. rotation, in degrees. Positive: CW
+	3. offset, 3 dimensions. {right, up left, down left}
+*)
+
+getHat[flip_, deg_, offset_] := Map[(# + offset.triangleCenterVectors) &, hatPrototype.{{If[flip, -1, 1], 0}, {0, 1}}.RotationMatrix[deg/180 * Pi]]//N;
+
+getOffsetShapes[shapes_, offset_] := Map[ (# + offset.triangleCenterVectors)&, shapes, {2} ];
+hatSignature[hat_] := Round[Simplify[ {(hat[[1]] - getCenter[hat]), (hat[[2]] - getCenter[hat])} ], epsilon];
+
+period = {7, 0, 2};
+periodOffset = period.triangleCenterVectors;
+rotationCenter = Mean[getHat[True, 60, {0, 0, 0}][[ {8, 13} ]]];
+
+getShapes3D[periodStart_, periodEnd_, periodicOffsetRatio_] := Module[
+	{centerRow, upperHalf, lowerHalf, fundamentalDomain, signatures, colorMap, shapes2D, rotatedShapes2D},
+
+	centerRow = {
+		getHat[True, 60, {0, 0, 0}]
+		, getHat[False, 120, {2, 0, 1}]
+		, getHat[False, 120, {4, 0, 2}]
+		, getHat[False, 120, {6, 0, 3}]
+	};
+
+	upperHalf = {
+		(* blue row *)
+		getHat[False, -120, {1, 2, 0}]
+		, getHat[False, 60, {3, 1, 0}]
+		, getHat[False, 180, {4, 0, 0}]
+
+		(* green row *)
+		, getHat[False, 120, {3, 3, 0}]
+		, getHat[False, 60, {5, 2, 0}]
+		, getHat[False, 0, {7, 2, 0}]
+
+		(* purple row *)
+		, getHat[False, 180, {5, 5, 0}]
+		, getHat[True, 0, {6, 4, 0}]
+		, getHat[False, 60, {8, 5, 0}]
+		, getHat[False, -60, {9, 4, 0}]
+
+		(* yellow row *)
+		, getHat[False, 180, {6, 7, 0}]
+		, getHat[False, 120, {8, 7, 0}]
+		, getHat[False, 60, {10, 6, 0}]
+
+		(* cyan row *)
+		, getHat[False, 180, {7, 9, 0}]
+	};
+
+	lowerHalf = getOffsetShapes[ Map[( (2 rotationCenter - #) )&, upperHalf, {2}], period];
+
+	fundamentalDomain = Join[ centerRow, upperHalf, lowerHalf ];
+	signatures = Sort[Map[#[[1]]&, Tally[Map[hatSignature, fundamentalDomain ] ]]];
+	colorMap = <||>;
+
+	For[sid = 1, sid<=Length[signatures], sid++,
+		colorMap[signatures[[sid]] ] = colors[[sid]]
+	];
+
+	(* shapes2D = fundamentalDomain; *)
+	shapes2D = Apply[Join, Table[getOffsetShapes[fundamentalDomain, k * period], {k, periodStart, periodEnd}]];
+
+	allColors = Map[( colorMap[hatSignature[#]] )&, shapes2D];
+
+	shiftedShapes2D = getOffsetShapes[shapes2D, periodicOffsetRatio * period];
+	rotatedShapes2D = Map[#.RotationMatrix[{{1, 0}, periodOffset}]&, shiftedShapes2D];
+
+	Map[{#[[1]], #[[2]], 0}&, rotatedShapes2D, {2}]
+];
+
+exportFrame[faces_, frameIndex_, outputFolderName_] := Module[
 	{},
 	(* If[frameIndex < 100, Return[]]; *)
 	(* If[Mod[frameIndex, 2] == 0, Return[]]; *)
 	(* Return[]; *)
-	elements = Union[ Table[elements3D[components[[k]], spinAngle, stage, sr, colors[[k]], k ], {k, 1, Length[components]}] ];
 
-	(* rangeZoom = Sqrt[maxRatio] * 1.2 * If[p < 6, 1, 0.5]; *)
-	
-	(* range = 6 * rangeZoom; *)
-	(* thickness = range / 80.0 / rangeZoom * If[p < 6, 1, 0.7]; *)
+	elements = elements3D[faces];
+
 	viewCenter = {0, 0, 0};
 	range = radius * 0.8;
 	thickness = range * 0.003;
@@ -276,50 +346,19 @@ exportAnimation[] := Module[
 	gifFolder = FileNameJoin[{imageFolder, shape}];
 	If[!DirectoryQ[gifFolder], CreateDirectory[gifFolder]];
 
-	faces1 = generateFaces[3, 6, 0];
-	faces1 = Map[#[[{1, 3, 2}]]&, faces1, {2}];
-	groupedFaces = GroupBy[faces1, Length];
 
-	faces3half = {Select[groupedFaces[3], Mod[Round[Mean[#][[3]], epsilon], 1.5]==0 &]};
-	(* faces3halfCenters = Map[Mean, faces3half[[1]]]; *)
-	(* faces3halfCenters = Select[faces3halfCenters, Abs[ #[[3]] ]<epsilon &]; *)
-	(* Print[Round[faces3halfCenters, epsilon]//Sort]; *)
-	(* Exit[]; *)
-
- 	vertices = Union[Flatten[faces3half[[1]], 1], SameTest -> ApproxSamePoint];
- 	Print["vertex count"];
- 	Print[Length[vertices]];
- 	degenFaces1 = Values[GroupBy[vertices, diagonal1]];
- 	degenFaces1 = Select[degenFaces1, Length[#]>2 &];
- 	degenFaces2 = Values[GroupBy[vertices, diagonal2]];
- 	degenFaces2 = Select[degenFaces2, Length[#]>2 &];
- 	degenFaces3 = Values[GroupBy[vertices, diagonal3]];
- 	degenFaces3 = Select[degenFaces3, Length[#]>2 &];
- 	Print[Map[Length, {degenFaces1, degenFaces2, degenFaces3}]];
-
-	components = Join[{degenFaces1}, {degenFaces2}, {degenFaces3}, faces3half];
-
-	stageCount = 4;
-
-	For[stage = 1, stage <= stageCount * (1 + stillStages), stage++,
-		For[srId = 1, srId <= framesPerStage, srId ++,
-			sr = srId/framesPerStage;
-			Print["sr = " <> ToString[N[sr]]];
-			yOffset = Sqrt[3] Mod[sr, 1];
-			movedComponents = Map[(# + {0, yOffset, 0})&, components, {3}];
-
-			truncateStage = Ceiling[stage/(1 + stillStages)];
-			truncateSr = If[truncateStage * (1 + stillStages) == stage, sr, 0];
-
-			componentsStereo = If[projectToBall, Map[radius stereo[# / radius]&, movedComponents, {3}], movedComponents];
-
-			frameIndex = (stage - 1) * framesPerStage + srId;
-			exportFrame[componentsStereo, -Pi/4, truncateStage, truncateSr, frameIndex, outputFolderName];
+	For[frameIndex = 1, frameIndex <= frameCount, frameIndex++,
+		Print["frameIndex/frameCount: " <> IntegerString[frameIndex] <> " / " <> IntegerString[frameCount] ];
+		shapes3D = getShapes3D[periodStart, periodEnd, frameIndex/frameCount];
+		
+		If[projectToBall,
+			shapes3D = Map[radius stereo3[# / radius]&, shapes3D, {2}]
 		];
+
+		exportFrame[shapes3D, frameIndex, outputFolderName];
 	];
 
-	frameCount = frameIndex;
-	delay = If[frameCount >= 100, 3, Floor[300/framesPerStage]];
+	delay = If[frameCount >= 100, 3, Floor[300/frameCount]];
 
 	gifCommand = "magick convert -quiet +repage -alpha remove -loop 0 -delay " <> IntegerString[delay] <> " -dispose 2 " <> outputFolder <> "\\spinning_frame*.png " <> gifFolder <> "\\" <> gifFileName <> ".gif";
 
@@ -340,110 +379,12 @@ exportAnimation[] := Module[
 
 (* exportAnimation[]; *)
 
-hatPrototype =
-	{
-		{0,0},
-		{0,Sqrt[3]},
-		{1,Sqrt[3]},
-		{3/2,(3 Sqrt[3])/2},
-		{3,Sqrt[3]},
-		{3,0},
-		{4,0},
-		{9/2,-(Sqrt[3]/2)},
-		{3,-Sqrt[3]},
-		{3/2,-(Sqrt[3]/2)},
-		{1,-Sqrt[3]},
-		{-1,-Sqrt[3]},
-		{-(3/2),-(Sqrt[3]/2)}
-	};
-
-getTriangle[hat_] := hat[[ {1, 5, 9} ]];
-getCenter[hat_] := Mean[getTriangle[hat]];
-
-hatPrototype = Map[# - getCenter[hatPrototype] &, hatPrototype];
-hatTriangle = getTriangle[hatPrototype];
-
-hatTriangle = getTriangle[hatPrototype];
-triangleCenterVectors = Reverse[Sort[2 * Map[Mean, getEdgesFromFace[hatTriangle]]]];
-
-(* 
-	Three transforms in sequence:
-	1. flip. If True, flip around the y axis. x -> -x. y unchanged
-	2. rotation, in degrees. Positive: CW
-	3. offset, 3 dimensions. {right, up left, down left}
-*)
-
-getHat[flip_, deg_, offset_] := Map[(# + offset.triangleCenterVectors) &, hatPrototype.{{If[flip, -1, 1], 0}, {0, 1}}.RotationMatrix[deg/180 * Pi]]//N;
-
-getOffsetShapes[shapes_, offset_] := Map[ (# + offset.triangleCenterVectors)&, shapes, {2} ];
-hatSignature[hat_] := Round[Simplify[ {(hat[[1]] - getCenter[hat]), (hat[[2]] - getCenter[hat])} ], epsilon];
-
-period = {7, 0, 2};
-periodOffset = period.triangleCenterVectors;
-rotationCenter = Mean[getHat[True, 60, {0, 0, 0}][[ {8, 13} ]]];
-
-getShapes3D[periodStart_, periodEnd_] := Module[
-	{centerRow, upperHalf, lowerHalf, fundamentalDomain, signatures, colorMap, shapes2D, rotatedShapes2D},
-
-	centerRow = {
-		getHat[True, 60, {0, 0, 0}]
-		, getHat[False, 120, {2, 0, 1}]
-		, getHat[False, 120, {4, 0, 2}]
-		, getHat[False, 120, {6, 0, 3}]
-	};
-
-	upperHalf = {
-		(* blue row *)
-		getHat[False, -120, {1, 2, 0}]
-		, getHat[False, 60, {3, 1, 0}]
-		, getHat[False, 180, {4, 0, 0}]
-
-		(* green row *)
-		, getHat[False, 120, {3, 3, 0}]
-		, getHat[False, 60, {5, 2, 0}]
-		, getHat[False, 0, {7, 2, 0}]
-
-		(* purple row *)
-		, getHat[False, 180, {5, 5, 0}]
-		, getHat[True, 0, {6, 4, 0}]
-		, getHat[False, 60, {8, 5, 0}]
-		, getHat[False, -60, {9, 4, 0}]
-
-		(* yellow row *)
-		, getHat[False, 180, {6, 7, 0}]
-		, getHat[False, 120, {8, 7, 0}]
-		, getHat[False, 60, {10, 6, 0}]
-
-		(* cyan row *)
-		, getHat[False, 180, {7, 9, 0}]
-	};
-
-	lowerHalf = getOffsetShapes[ Map[( (2 rotationCenter - #) )&, upperHalf, {2}], period];
-
-	fundamentalDomain = Join[ centerRow, upperHalf, lowerHalf ];
-	signatures = Sort[Map[#[[1]]&, Tally[Map[hatSignature, fundamentalDomain ] ]]];
-	colorMap = <||>;
-
-	For[sid = 1, sid<=Length[signatures], sid++,
-		colorMap[signatures[[sid]] ] = colors[[sid]]
-	];
-
-	(* shapes2D = fundamentalDomain; *)
-	shapes2D = Apply[Join, Table[getOffsetShapes[fundamentalDomain, k * period], {k, periodStart, periodEnd}]];
-
-	allColors = Map[( colorMap[hatSignature[#]] )&, shapes2D];
-
-	rotatedShapes2D = Map[#.RotationMatrix[{{1, 0}, periodOffset}]&, shapes2D];
-
-	Map[{#[[1]], #[[2]], 0}&, rotatedShapes2D, {2}]
+(* For[fid=0, fid<=10, fid++,
+	exportFrame[getShapes3D[-2, 1, fid/10.0], 100+fid, "test"];
 ];
+ *)
 
-shapes3D = getShapes3D[-2, 1];
-
-exportFrame[ { shapes3D }, 0, 0, 0, 100, "test"];
-
-
-
+exportFrame[getShapes3D[0, 0, 0], 100, "test"];
 
 (* 
 
