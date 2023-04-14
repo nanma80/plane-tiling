@@ -12,7 +12,7 @@ nGenerations = 30;
 (* nGenerations = 1; *)
 (* nGenerations = 7; *)
 
-frameCount = 60;
+frameCount = 120;
 
 exportToPov = True;
 highlightCenter = False;
@@ -43,7 +43,7 @@ radius = 15;
 (* splitEdgeParts = 2; *)
 splitEdgeParts = 8;
 
-periodStart = -2; 
+periodStart = -3; 
 periodEnd = 1;
 
 (* periodStart = 0;  *)
@@ -338,9 +338,9 @@ getShapes3D[periodStart_, periodEnd_, periodicOffsetRatio_] := Module[
 
 exportFrame[faces_, frameIndex_, outputFolderName_] := Module[
 	{},
-	(* If[frameIndex < 100, Return[]]; *)
-	(* If[Mod[frameIndex, 2] == 0, Return[]]; *)
-	(* Return[]; *)
+	(* If[frameIndex < 77, Return[]]; *)
+	(* If[Mod[frameIndex, 2] == 1, Return[]]; *)
+	Return[];
 
 	elementsAndSurfaces = elements3D[faces];
 	elements = elementsAndSurfaces[[1]];
@@ -413,6 +413,7 @@ exportAnimation[] := Module[
 	];
 
 	delay = If[frameCount >= 40, 3, Floor[100/frameCount]];
+	(* delay = 2; *)
 
 	gifCommand = "magick convert -quiet +repage -alpha remove -loop 0 -delay " <> IntegerString[delay] <> " -dispose 2 " <> outputFolder <> "\\spinning_frame*.png " <> gifFolder <> "\\" <> gifFileName <> ".gif";
 
