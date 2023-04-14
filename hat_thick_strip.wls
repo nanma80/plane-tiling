@@ -12,13 +12,13 @@ nGenerations = 30;
 (* nGenerations = 1; *)
 (* nGenerations = 7; *)
 
-frameCount = 4;
+frameCount = 30;
 
 exportToPov = True;
 highlightCenter = False;
 
-(* projectToBall = True; *)
-projectToBall = False;
+projectToBall = True;
+(* projectToBall = False; *)
 
 topView = True;
 
@@ -38,14 +38,16 @@ If[Length[argv] >= 2,
 	p = 3; q = 6; (* default *)
 ];
 
-(* radius = 15; *)
-radius = 5;
+radius = 15;
+(* radius = 5; *)
+(* splitEdgeParts = 2; *)
+splitEdgeParts = 8;
 
-periodStart = -3; 
+periodStart = -2; 
 periodEnd = 1;
 
-periodStart = 0; 
-periodEnd = 0;
+(* periodStart = 0;  *)
+(* periodEnd = 0; *)
 
 maxStellationLevel = If[Length[argv] >= 3, ToExpression[argv[[3]]], 1];
 maxRatio = Tan[maxStellationLevel Pi/p]/Tan[Pi/p];
@@ -57,18 +59,16 @@ shape = "hat_thick_strip";
 opacity = 1;
 lightingOrigin = {50, -50, 50};
 lighting = {{"Point", White, lightingOrigin}};
-colors = {Blue, Green, Cyan, Yellow, Red, Purple, Brown, Orange, Lighter[Red, 0.5] };
-
-splitEdgeParts = 8;
+colors = {Brown, Purple, Cyan, Yellow, Red, Green, Blue, Orange, Lighter[Red, 0.5] };
 
 imageFolder = "output";
 
 viewPointBeforeRotation = If[topView, {0, 0, 1}, {-3, -2.5, 3.5}];
 (* rotationLighting = Transpose[RotationMatrix[{{0.8, -1.0, 1.2}, viewPointBeforeRotation}]]; *)
 (* rotationLighting = Transpose[RotationMatrix[{{0.8, -1.0, 1.2}, viewPointBeforeRotation}]]; *)
-(* rotationLighting = Transpose[RotationMatrix[{ {0, 0, 1}, lightingOrigin}]]; *)
-rotationLighting = IdentityMatrix[3];
-(* rotationLighting = RotationMatrix[Pi/4, {0, 1, 1}]; *)
+rotationLighting = RotationMatrix[{lightingOrigin, {0.2, 0.1, 1}}];
+(* rotationLighting = IdentityMatrix[3]; *)
+(* rotationLighting = RotationMatrix[-Pi/4, {0, 1, 1}]; *)
 
 (* viewVerticalBeforeRotation = viewPointBeforeRotation.RotationMatrix[Pi/2, {0, 1, 1}]; *)
 viewVerticalBeforeRotation = {0, 1, 0};
@@ -108,6 +108,7 @@ getPoincare[v_] := {0, v[[2]], v[[3]]}/(1+v[[1]]);
 splitEdge[edge_, n_] := Table[{k edge[[1]] + (1-k) edge[[2]], (k+1/n) edge[[1]] + (1-k-1/n) edge[[2]] }, {k, 0, 1 - 1/n, 1/n}];
 HNormalize[v_, norm_] := v/HNorm[v] * norm;
 getHyperboloid[v_] := v;
+normalizeToRadius[p_] := p/Norm[p] * radius;
 
 scale[edge_, ratio_] := Module[
 	{center},
@@ -129,6 +130,8 @@ stereo3[p_] := {
 	2 p[[2]]/(1 + p[[1]]^2 + p[[2]]^2),
 	(1 - p[[1]]^2 - p[[2]]^2)/(1 +	p[[1]]^2 + p[[2]]^2)
 };
+
+stereoWithRadius[p_] := radius stereo3[p / radius].rotationLighting;
 
 scaleFace[face_, ratio_, stellationLevel_] := Module[
 	{edges, edgeOrders},
@@ -154,36 +157,64 @@ boosted[vertices_, center_, axis_, angle_] := Map[# + center &, Map[# - center &
 shapeWithParams = shape <> "_" <> IntegerString[frameCount] <> If[projectToBall, "", "_no_projection"];
 
 elements3D[faces_] := Module[
-	{allEdges, edges, allVertices, vertices, selectedFaces, displayFaces},
+	{allEdges, edges, allVertices, vertices, selectedFaces, displayFaces, splitFaces},
 
-	selectedFaces = Map[(#.rotationLighting) &, faces, {2}];
-	displayFaces = Map[getHyperboloid, selectedFaces, {2}];
+	selectedFaces = faces;
+
+	splitFaces = Map[splitHatToKites, selectedFaces];
+
+	If[projectToBall,
+		splitFaces = Map[stereoWithRadius, splitFaces, {3}]
+	];
 
 	allEdges = Flatten[Map[getEdgesFromFace, selectedFaces], 1];
+	splitEdges = Flatten[Map[splitEdge[#, splitEdgeParts]&, allEdges], 1];
+	displayEdges = splitEdges;
+	If[projectToBall,
+		displayEdges = Map[normalizeToRadius[stereoWithRadius[#]]&, splitEdges, {2}];
+	];
+	
 	edges = Union[allEdges , SameTest -> sameEdge];
 
-	displayEdges = Map[getHyperboloid, edges, {2}];
-
-	allVertices = Round[Flatten[displayEdges, 1], epsilon];
+	allVertices = Round[Flatten[edges, 1], epsilon];
 	vertices = Union[allVertices , SameTest -> ApproxSamePoint];
-	verticesTally = Tally[allVertices];
+	displayVertices = If[projectToBall, Map[stereoWithRadius, vertices], vertices];
 
 	elements = {
-			Table[
-				{
-					Opacity[opacity], FaceForm[ allColors[[k]] ], Polygon[displayFaces[[k]]]
-				}, 
-				{k, Length[displayFaces]}
-			],
 			{
 				Opacity[opacity], FaceForm[White], Map[Cylinder[#, thickness*opacity]&, displayEdges]
 			},
 			{
-				Opacity[opacity], FaceForm[White], Map[Sphere[#[[1]], thickness*opacity]&, verticesTally]
+				Opacity[opacity], FaceForm[White], Map[Sphere[#, 2*thickness*opacity]&, displayVertices]
 			}
 	};
 
-	elements
+	surfaces = {};
+	For[hatId = 1, hatId <= Length[splitFaces], hatId++,
+		quads = splitFaces[[hatId]];
+		color = allColors[[hatId]];
+
+		For[quadId = 1, quadId <= Length[quads], quadId++,
+			quad = quads[[quadId]];
+
+			planarPoints[l1_, l2_] := 
+					l2 (l1 quad[[1]] + (1 - l1) quad[[2]]) +
+					(1 - l2) (l1 quad[[4]] + (1 - l1) quad[[3]]);
+			normalizedPoints[l1_, l2_] := normalizeToRadius[planarPoints[l1, l2]];
+			
+			surface = ParametricPlot3D[
+				normalizedPoints[l1, l2], {l1, 0, 1}, {l2, 0, 1},
+				PlotStyle -> {color, Opacity[opacity]}, Mesh -> None,
+				PlotPoints -> splitEdgeParts
+			];
+			AppendTo[surfaces, surface];
+
+		];
+	];
+
+	Print[DateString["ISODateTime"] <> " Populated surfaces. Count: " <> IntegerString[Length[surfaces]]];
+
+	{elements, surfaces}
 ];
 
 hatPrototype =
@@ -208,9 +239,26 @@ getCenter[hat_] := Mean[getTriangle[hat]];
 
 hatPrototype = Map[# - getCenter[hatPrototype] &, hatPrototype];
 hatTriangle = getTriangle[hatPrototype];
-
-hatTriangle = getTriangle[hatPrototype];
 triangleCenterVectors = Reverse[Sort[2 * Map[Mean, getEdgesFromFace[hatTriangle]]]];
+
+splitHatToKites[hat_] := Module[
+	{},
+
+	center = getCenter[hat];
+	mid15 = Mean[hat[[{1, 5}]]];
+	mid1112 = Mean[hat[[{11, 12}]]];
+
+	{
+		{ hat[[1]], hat[[2]], hat[[3]], mid15 },
+		{ hat[[3]], hat[[4]], hat[[5]], mid15 },
+		{ center, mid15, hat[[5]], hat[[6]] },
+		{ center, hat[[6]], hat[[9]], hat[[10]] },
+		{ center, hat[[10]], hat[[1]], mid15 },
+		{ hat[[6]], hat[[7]], hat[[8]], hat[[9]] },
+		{ hat[[1]], hat[[10]], hat[[11]], mid1112 },
+		{ hat[[12]], hat[[13]], hat[[1]], mid1112 }
+	}
+];
 
 (* 
 	Three transforms in sequence:
@@ -267,6 +315,9 @@ getShapes3D[periodStart_, periodEnd_, periodicOffsetRatio_] := Module[
 	lowerHalf = getOffsetShapes[ Map[( (2 rotationCenter - #) )&, upperHalf, {2}], period];
 
 	fundamentalDomain = Join[ centerRow, upperHalf, lowerHalf ];
+
+	(* fundamentalDomain = centerRow[[{1}]]; *)
+
 	signatures = Sort[Map[#[[1]]&, Tally[Map[hatSignature, fundamentalDomain ] ]]];
 	colorMap = <||>;
 
@@ -291,19 +342,26 @@ exportFrame[faces_, frameIndex_, outputFolderName_] := Module[
 	(* If[Mod[frameIndex, 2] == 0, Return[]]; *)
 	(* Return[]; *)
 
-	elements = elements3D[faces];
+	elementsAndSurfaces = elements3D[faces];
+	elements = elementsAndSurfaces[[1]];
+	surfaces = elementsAndSurfaces[[2]];
 
 	viewCenter = {0, 0, 0};
 	range = radius * 0.8;
-	thickness = range * 0.003;
+	thickness = range * 0.006;
 
 	graph = Graphics3D[
 		elements,
-		ViewPoint -> viewPointBeforeRotation.Transpose[rotationLighting] * 100,
-		ViewVertical -> viewVerticalBeforeRotation.Transpose[rotationLighting],
+		ViewPoint -> viewPointBeforeRotation.rotationLighting * 100,
+		ViewVertical -> viewVerticalBeforeRotation.rotationLighting,
 		PlotRange -> {{viewCenter[[1]]-range, viewCenter[[1]]+range}, {viewCenter[[2]]-range, viewCenter[[2]]+range}, {viewCenter[[3]]-range, viewCenter[[3]]+range}},
 		Lighting -> lighting
 	];
+
+	If[Length[surfaces] > 1,
+		graph = Apply[Show, Join[{graph}, surfaces]];
+	];
+	Print[DateString["ISODateTime"] <> " Defined graph"];
 
 	outputFolder = FileNameJoin[{imageFolder, outputFolderName}];
 	If[!DirectoryQ[outputFolder], CreateDirectory[outputFolder]];
@@ -348,13 +406,9 @@ exportAnimation[] := Module[
 
 
 	For[frameIndex = 1, frameIndex <= frameCount, frameIndex++,
-		Print["frameIndex/frameCount: " <> IntegerString[frameIndex] <> " / " <> IntegerString[frameCount] ];
+		Print[DateString["ISODateTime"] <> " frameIndex/frameCount: " <> IntegerString[frameIndex] <> " / " <> IntegerString[frameCount] ];
 		shapes3D = getShapes3D[periodStart, periodEnd, frameIndex/frameCount];
 		
-		If[projectToBall,
-			shapes3D = Map[radius stereo3[# / radius]&, shapes3D, {2}]
-		];
-
 		exportFrame[shapes3D, frameIndex, outputFolderName];
 	];
 
@@ -377,14 +431,10 @@ exportAnimation[] := Module[
   Print["Saved the video to " <> gifFolder <> "\\" <> gifFileName <> ".mp4"];
 ];
 
-(* exportAnimation[]; *)
+exportAnimation[];
 
-(* For[fid=0, fid<=10, fid++,
-	exportFrame[getShapes3D[-2, 1, fid/10.0], 100+fid, "test"];
-];
- *)
-
-exportFrame[getShapes3D[0, 0, 0], 100, "test"];
+(* exportFrame[getShapes3D[0, 0, 0], 100, "test"]; *)
+(* exportFrame[getShapes3D[-2, 1, 0], 100, "test"]; *)
 
 (* 
 
