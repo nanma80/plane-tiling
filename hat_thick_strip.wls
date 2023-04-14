@@ -12,7 +12,7 @@ nGenerations = 30;
 (* nGenerations = 1; *)
 (* nGenerations = 7; *)
 
-frameCount = 30;
+frameCount = 60;
 
 exportToPov = True;
 highlightCenter = False;
@@ -412,7 +412,7 @@ exportAnimation[] := Module[
 		exportFrame[shapes3D, frameIndex, outputFolderName];
 	];
 
-	delay = If[frameCount >= 100, 3, Floor[300/frameCount]];
+	delay = If[frameCount >= 40, 3, Floor[100/frameCount]];
 
 	gifCommand = "magick convert -quiet +repage -alpha remove -loop 0 -delay " <> IntegerString[delay] <> " -dispose 2 " <> outputFolder <> "\\spinning_frame*.png " <> gifFolder <> "\\" <> gifFileName <> ".gif";
 
